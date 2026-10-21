@@ -6,6 +6,7 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 
 import { CONFIG } from "../config";
+import { aplicacion } from "../estado";
 import { pesoActual, UNIDADES_PESO, fijarUnidadPeso } from "../unidades";
 import type { UnidadPeso } from "../tipos";
 
@@ -16,7 +17,7 @@ import type { UnidadPeso } from "../tipos";
 export function el<K extends keyof HTMLElementTagNameMap>(
     tag: K, claseOCss?: string | null, texto?: string,
 ): HTMLElementTagNameMap[K] {
-    const e = document.createElement(tag);
+    const e = createEl(tag);
     if (claseOCss) {
         if (claseOCss.includes(":")) e.style.cssText = claseOCss;
         else e.className = claseOCss;
@@ -100,8 +101,10 @@ export const cajaColapsable = (raiz: HTMLElement, titulo: string, subtitulo: str
     tTit.classList.add("gym-colaps-tit");
     const nombre = titulo.replace(/^\S+\s/, "");
     const nombreMin = nombre.charAt(0).toLowerCase() + nombre.slice(1);
+    /* El estado vive en el almacenamiento propio del vault (App#saveLocalStorage,
+       por vault y no global como el localStorage del navegador). */
     let abierta = false;
-    try { abierta = localStorage.getItem(clave) === "1"; } catch { /* sin localStorage */ }
+    try { abierta = aplicacion().loadLocalStorage(clave) === "1"; } catch { /* sin almacenamiento */ }
     const etiqueta = el("div", "gym-colaps-etq");
     etiqueta.append(
         el("span", "gym-naranja", titulo), " ",
@@ -118,11 +121,16 @@ export const cajaColapsable = (raiz: HTMLElement, titulo: string, subtitulo: str
     };
     bPliegue.onclick = () => {
         abierta = !abierta;
-        try { localStorage.setItem(clave, abierta ? "1" : "0"); } catch { /* sin localStorage */ }
+        try { aplicacion().saveLocalStorage(clave, abierta ? "1" : "0"); } catch { /* sin almacenamiento */ }
         pintarTit();
     };
     pintarTit();
-    return c2;
+    /* El contenido va en un único cuerpo plegable: así el oculto se resuelve
+       con una clase (display:none) y no hace falta !important contra los
+       estilos en línea de cada hijo. */
+    const cuerpo = el("div", "gym-colaps-cuerpo");
+    c2.appendChild(cuerpo);
+    return cuerpo;
 };
 
 // Con un tema translúcido --background-primary puede ser rgba(...) con alfa < 1,
@@ -197,16 +205,16 @@ export const tablaEn = (
     raiz: HTMLElement, cabeceras: string[], filas: (string | HTMLElement)[][],
     { filasVisibles = 0 }: { filasVisibles?: number } = {},
 ): HTMLTableElement => {
-    const t = document.createElement("table");
+    const t = createEl("table");
     t.className = "gym-tabla";
     const thead = el("thead");
     const trh = el("tr");
     for (const h of cabeceras) trh.append(el("th", null, h));
     thead.appendChild(trh);
     t.appendChild(thead);
-    const tb = document.createElement("tbody");
+    const tb = createEl("tbody");
     for (const f of filas) {
-        const tr = document.createElement("tr");
+        const tr = createEl("tr");
         for (const c of f) {
             if (typeof c === "string") tr.append(el("td", null, c));
             else { const td = el("td"); td.appendChild(c); tr.append(td); }
@@ -221,10 +229,12 @@ export const tablaEn = (
     return t;
 };
 
-export const btn = (texto: string, css: string | null, onclick: (() => void) | null): HTMLButtonElement => {
+/* Botón común. La acción puede ser async: aquí se «void» para que ningún
+   caller acumule promesas flotantes. */
+export const btn = (texto: string, css: string | null, accion: (() => void | Promise<void>) | null): HTMLButtonElement => {
     const b = el("button", "gym-btn" + (css ? " " + css : ""), texto);
     b.type = "button";
-    if (onclick) b.onclick = onclick;
+    if (accion) b.onclick = () => { void accion(); };
     return b;
 };
 
@@ -367,9 +377,9 @@ export const pedirTexto = (
     input.value = inicial ?? "";
     if (sugerencias?.length) {
         const id = `gym-sug-${++dlN}`;
-        const dl = document.createElement("datalist"); dl.id = id;
+        const dl = createEl("datalist"); dl.id = id;
         for (const s of sugerencias) {
-            const o = document.createElement("option"); o.value = s;
+            const o = createEl("option"); o.value = s;
             dl.appendChild(o);
         }
         input.setAttribute("list", id);

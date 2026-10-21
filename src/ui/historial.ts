@@ -40,22 +40,22 @@ export function seccionHistorial(c: HTMLElement, rutina: Rutina): void {
     const filtros = el("div", "display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;");
     const cEj = el("div", "flex:1 1 200px;min-width:0;");
     const selEj = el("select");
-    const opTodas = document.createElement("option");
+    const opTodas = createEl("option");
     opTodas.value = ""; opTodas.textContent = "Todos los ejercicios";
     selEj.appendChild(opTodas);
     for (const e of ejercicios) {
-        const o = document.createElement("option");
+        const o = createEl("option");
         o.value = e.id; o.textContent = e.nombre;
         selEj.appendChild(o);
     }
     cEj.appendChild(el("div", "gym-et", "Ejercicio")); cEj.appendChild(selEj);
     const cDia = el("div", "flex:1 1 150px;min-width:0;");
     const selDia = el("select");
-    const opTodos = document.createElement("option");
+    const opTodos = createEl("option");
     opTodos.value = ""; opTodos.textContent = "Todos los días";
     selDia.appendChild(opTodos);
     for (const d of rutina.dias ?? []) {
-        const o = document.createElement("option");
+        const o = createEl("option");
         o.value = d.id; o.textContent = d.nombre;
         selDia.appendChild(o);
     }

@@ -12,7 +12,7 @@ import { CONFIG } from "../config";
 import { aplicacion, conf } from "../estado";
 import { borrarRutina, leerIndice, leerMedidas, leerRutina, ultimaMedida } from "../datos";
 import type { IndiceRutina } from "../tipos";
-import { diffDias, fechaLegible, hoy } from "../util";
+import { diffDias, fechaLegible, hoy, msgError } from "../util";
 import { fijarUnidadPeso, pesoActual, pesoTexto, tallaTexto, unidadContraria } from "../unidades";
 import { KPI, btn, caja, confirmar, el, toast } from "./componentes";
 import { pintarCabecera } from "./cabecera";
@@ -189,9 +189,9 @@ export class VistaLista extends ItemView {
             await borrarRutina(f.id);
             toast(`🗑 Rutina «${f.nombre}» borrada (copia .bak guardada)`);
             await this.pintar();
-        } catch (e: any) {
+        } catch (e: unknown) {
             console.error("[Gym Stone borrar]", e);
-            toast("⚠️ No pude borrar la rutina: " + (e?.message ?? e), false);
+            toast("⚠️ No pude borrar la rutina: " + msgError(e), false);
         }
     }
 

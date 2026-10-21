@@ -15,10 +15,11 @@
 import { TFile } from "obsidian";
 import { aplicacion } from "../estado";
 import type { LecturaNota } from "../tipos";
+import { aTexto, msgError } from "../util/texto";
 
 // Extrae el contenido del primer bloque ```json``` de una nota
 export const bloqueJson = (txt: unknown): string | null => {
-    const m = /```json\s*\n?([\s\S]*?)```/.exec(String(txt ?? ""));
+    const m = /```json\s*\n?([\s\S]*?)```/.exec(aTexto(txt));
     return m ? m[1].trim() : null;
 };
 
@@ -74,9 +75,9 @@ export const leerNotaDatos = async <T>(ruta: string): Promise<LecturaNota<T>> =>
     if (!(f instanceof TFile)) return { error: `${ruta} no es un archivo.`, ruta };
     let txt = "";
     try { txt = await vault.read(f); }
-    catch (e: any) { return { error: `No pude leer ${ruta}: ${e?.message ?? e}`, ruta }; }
+    catch (e: unknown) { return { error: `No pude leer ${ruta}: ${msgError(e)}`, ruta }; }
     const json = bloqueJson(txt);
     if (json === null) return { error: `El archivo ${ruta} no tiene bloque json legible: no lo sobrescribo por si acaso.`, ruta };
     try { return { datos: JSON.parse(json) as T, file: f, ruta }; }
-    catch (e: any) { return { error: `El bloque JSON de ${ruta} está roto (${e?.message ?? e}): no lo sobrescribo por si acaso.`, ruta }; }
+    catch (e: unknown) { return { error: `El bloque JSON de ${ruta} está roto (${msgError(e)}): no lo sobrescribo por si acaso.`, ruta }; }
 };

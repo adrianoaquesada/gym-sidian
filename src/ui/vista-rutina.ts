@@ -36,7 +36,7 @@ export class VistaRutina extends ItemView {
 
     async onOpen(): Promise<void> {
         if (!this.rutinaId) {
-            const st = this.leaf.getViewState()?.state as EstadoRutinaAbierta | undefined;
+            const st = this.leaf.getViewState()?.state;
             this.rutinaId = typeof st?.rutinaId === "string" ? st.rutinaId : null;
         }
         // Se repinta si cambia el archivo de LA rutina que está abierta ahora

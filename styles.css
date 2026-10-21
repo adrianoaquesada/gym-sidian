@@ -208,7 +208,9 @@ table.gym-tabla td { border-bottom:1px solid var(--background-modifier-border); 
 /* Fila de título: etiqueta a la izquierda, botón de pliegue a la derecha */
 .gym-colaps-tit { user-select:none; display:flex; align-items:center; justify-content:space-between;
   gap:8px; flex-wrap:wrap; }
-.gym-colaps.oculto > :not(.gym-colaps-tit) { display:none !important; }
+/* El contenido vive en un único cuerpo plegable (creado por cajaColapsable):
+   al plegar basta un display:none por clase, sin !important. */
+.gym-colaps.oculto > .gym-colaps-cuerpo { display:none; }
 @media (max-width: 640px) {
   .gym-serie { grid-template-columns:22px 1fr 1fr 32px; }
   /* La fila del ejercicio se parte en 2 columnas (igual que en «Editar rutina»):

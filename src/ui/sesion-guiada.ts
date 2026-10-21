@@ -15,7 +15,7 @@ import {
 } from "../datos";
 import type { EjercicioDef, EjercicioSesion, Rutina, SerieSesion, Sesion } from "../tipos";
 import { pesoACampo, pesoAKg, pesoTexto } from "../unidades";
-import { aNumero, dos, esc, fechaLegible, hoy } from "../util";
+import { aNumero, dos, esc, fechaLegible, hoy, msgError } from "../util";
 import { btn, confirmar, el, modal, pedirTexto, toast } from "./componentes";
 import { elegirEjercicio, pedirDescanso } from "./ejercicios-ui";
 import type { Pintar } from "./pintar";
@@ -41,14 +41,14 @@ interface AjustePlan { d: DefSesion; maxHoy: number }
 export function elegirDiaGuiada(rutina: Rutina, pintar: Pintar): void {
     // Rutina libre: no hay días que elegir, se entra directo y los ejercicios
     // se van añadiendo dentro de la sesión.
-    if (esLibre(rutina)) { modoSesion(rutina, null, pintar); return; }
+    if (esLibre(rutina)) { void modoSesion(rutina, null, pintar); return; }
     const prog = diaProgramado(rutina, hoy());
-    if (prog) { modoSesion(rutina, prog.id, pintar); return; }
+    if (prog) { void modoSesion(rutina, prog.id, pintar); return; }
     // Hoy no está programado: elegir a mano (una sesión en día no programado es válido)
     const m = modal("🎯 ¿Qué día vas a hacer?", `${fechaLegible(hoy())} · hoy no estaba programado`);
     const filaD = el("div", "gym-botones");
     for (const d of rutina.dias ?? []) {
-        filaD.appendChild(btn(d.nombre, "primario", () => { m.cerrar(); modoSesion(rutina, d.id, pintar); }));
+        filaD.appendChild(btn(d.nombre, "primario", () => { m.cerrar(); void modoSesion(rutina, d.id, pintar); }));
     }
     m.caja.appendChild(filaD);
     m.caja.appendChild(btn("Cancelar", "", () => m.cerrar()));
@@ -63,7 +63,7 @@ export function elegirDiaGuiada(rutina: Rutina, pintar: Pintar): void {
 // que es lo que usa el CSS de .gym-modo.
 const medirAreasSeguras = (): void => {
     const lee = (lado: string): number => {
-        const s = document.createElement("div");
+        const s = createDiv();
         s.style.cssText = `position:absolute;top:-9999px;left:-9999px;visibility:hidden;`
             + `padding-${lado}:env(safe-area-inset-${lado},0px);`;
         document.body.appendChild(s);
@@ -333,7 +333,7 @@ export async function modoSesion(rutina: Rutina, diaId: string | null, pintar: P
         const noUltimo = defs.length > 0 && idx < defs.length - 1;
         if (noUltimo) {
             b.disabled = true;
-            b.title = "Solo se pueden añadir ejercicios desde el último: avanza (⏭ Siguiente) hasta llegar a él";
+            b.title = "Solo se pueden añadir ejercicios desde el último: avanza (⏭ siguiente) hasta llegar a él";
         } else {
             b.title = "Añadir otro ejercicio a esta sesión: cada variante cuenta aparte en el historial";
         }
@@ -362,7 +362,7 @@ export async function modoSesion(rutina: Rutina, diaId: string | null, pintar: P
             if (sinTerminar) {
                 // Se sigue en el ejercicio de siempre (el descanso también): el
                 // nuevo aparece en «Ejercicio X de Y» y tocará más adelante.
-                toast(`＋ ${r.nombre} añadido: tocará cuando termines «${actual!.nombre}»`);
+                toast(`＋ ${r.nombre} añadido: tocará cuando termines «${actual.nombre}»`);
             } else {
                 if (descanso && descanso.ej === idx) descanso = null;   // solo el descanso propio
                 if (ejecDesdeEj === idx) ejecDesde = null;
@@ -467,7 +467,7 @@ export async function modoSesion(rutina: Rutina, diaId: string | null, pintar: P
             cajaDescanso.appendChild(fDesc);
             // Si estás viendo OTRO ejercicio, la caja dice de quién es el descanso
             cajaDescanso.appendChild(el("div", "font-size:.78em;opacity:.7;margin-top:2px;",
-                descanso!.ej !== idx ? `de «${defs[descanso!.ej].nombre}» — aquí solo miras` : ""));
+                descanso.ej !== idx ? `de «${defs[descanso.ej].nombre}» — aquí solo miras` : ""));
             contEj.appendChild(cajaDescanso);
             pintarDescanso();
         }
@@ -497,7 +497,7 @@ export async function modoSesion(rutina: Rutina, diaId: string | null, pintar: P
                 cierreS.appendChild(bUndoS);
                 fila.appendChild(cierreS);
             } else if (registrada) {
-                const txt = el("div", "font-size:.95em;", `${s!.reps ?? "–"} reps × ${s!.peso != null ? pesoTexto(s!.peso) : "sin peso"}`);
+                const txt = el("div", "font-size:.95em;", `${s.reps ?? "–"} reps × ${s.peso != null ? pesoTexto(s.peso) : "sin peso"}`);
                 fila.appendChild(txt);
                 fila.appendChild(el("div"));
                 const cierre = el("div", "cierre");
@@ -569,8 +569,8 @@ export async function modoSesion(rutina: Rutina, diaId: string | null, pintar: P
                                          : "⏳ Descansando… (usa +30 s o Saltar)";
             accion = null; clase = "";
         }
-        else if (enDescanso && descanso!.ej === idx) { texto = "⏭ Siguiente ejercicio"; accion = () => siguiente(); clase = "verde"; }
-        else if (!pendientes) { texto = idx + 1 >= defs.length ? "🏁 Terminar" : "⏭ Siguiente ejercicio"; accion = () => siguiente(); clase = "verde"; }
+        else if (enDescanso && descanso!.ej === idx) { texto = "⏭ Siguiente ejercicio"; accion = () => { void siguiente(); }; clase = "verde"; }
+        else if (!pendientes) { texto = idx + 1 >= defs.length ? "🏁 Terminar" : "⏭ Siguiente ejercicio"; accion = () => { void siguiente(); }; clase = "verde"; }
         btnAccion = el("button", "gym-btn-g gym-btn-accion " + clase, texto); btnAccion.type = "button";
         if (accion) btnAccion.onclick = accion; else btnAccion.disabled = true;
         barraAccion.replaceChildren();   // la acción vive fija abajo, encima del pie
@@ -592,7 +592,7 @@ export async function modoSesion(rutina: Rutina, diaId: string | null, pintar: P
     const bSiguiente = el("button", "gym-btn-g", "⏭ Siguiente"); bSiguiente.type = "button";
     bSiguiente.onclick = () => {
         if (idx + 1 < defs.length) deslizarA(idx + 1);   // se desliza como el gesto con el dedo
-        else siguiente();                                 // en el último ejercicio: termina la sesión (como antes)
+        else void siguiente();                            // en el último ejercicio: termina la sesión (como antes)
     };
     const bSaltar = el("button", "gym-btn-g", "⏭ Saltar ejercicio"); bSaltar.type = "button";
     bSaltar.title = "No hacer este ejercicio: sus series quedan registradas como saltadas";
@@ -603,7 +603,7 @@ export async function modoSesion(rutina: Rutina, diaId: string | null, pintar: P
         // Marca lo que quede pendiente como saltado, para que el registro cuadre con el plan
         while (ej.series.length < ej.plan) ej.series.push({ saltada: true, t: transcurridoMs() });
         toast(`⏭ ${ej.nombre}: sin registrar`);
-        siguiente();
+        void siguiente();
     };
     const bGuardar = el("button", "gym-btn-g", "💾 Guardar"); bGuardar.type = "button";
     bGuardar.title = "Guardar el progreso actual y seguir: si se cierra la app, al volver podrás continuar";
@@ -757,10 +757,10 @@ export async function modoSesion(rutina: Rutina, diaId: string | null, pintar: P
             await escribirRutina(rutina);
             parcialGuard = sesion;   // los próximos Guardares actualizan este mismo registro
             toast(`💾 Progreso guardado · ${totalSeries} series · ${duracionMin} min — continúa cuando quieras`);
-            pintar();
-        } catch (e) {
+            void pintar();
+        } catch (e: unknown) {
             console.error("[GymGestor guardar progreso]", e);
-            toast("⚠️ No pude guardar el progreso: " + (e?.message ?? e), false);
+            toast("⚠️ No pude guardar el progreso: " + msgError(e), false);
         }
     };
 
@@ -827,10 +827,10 @@ export async function modoSesion(rutina: Rutina, diaId: string | null, pintar: P
             cerrar();
             toast(`✅ Sesión de ${dia.nombre} guardada · ${totalSeries} series · ${duracionMin} min` +
                 (ajustes.length ? ` · plan ajustado en ${ajustes.length} ejercicio${ajustes.length > 1 ? "s" : ""}` : ""));
-            pintar();
-        } catch (e) {
+            void pintar();
+        } catch (e: unknown) {
             console.error("[GymGestor modo sesión]", e);
-            toast("⚠️ No pude guardar la sesión: " + (e?.message ?? e), false);
+            toast("⚠️ No pude guardar la sesión: " + msgError(e), false);
         }
     };
 

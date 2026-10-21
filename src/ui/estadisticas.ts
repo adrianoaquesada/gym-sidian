@@ -97,7 +97,7 @@ export function seccionEstadisticas(
     const meses = porClave(f => f.slice(0, 7));
 
     const titVolumen = el("div", "gym-tit");
-    titVolumen.innerHTML = `<span>Volumen por semana y por mes</span>`;
+    titVolumen.append(el("span", null, "Volumen por semana y por mes"));
     c2.appendChild(titVolumen);
     tablaEn(c2, ["Periodo", "Sesiones", "Volumen", "Minutos"], [
         ...[...semanas].reverse().slice(0, 8).map(w =>
@@ -116,7 +116,8 @@ function seccionProgresion(c: HTMLElement, rutina: Rutina): void {
     const ejercicios = ejerciciosConDatos(rutina);
     const conHistorial = ejercicios.filter(e => historialEjercicio(rutina, e.id).length);
     const tit = el("div", "gym-tit");
-    tit.innerHTML = `<span>Progresión por ejercicio</span> — mejor peso, mejor serie, 1RM estimado (Epley) y gráfica en el tiempo`;
+    tit.append(el("span", null, "Progresión por ejercicio"),
+        " — mejor peso, mejor serie, 1RM estimado (Epley) y gráfica en el tiempo");
     c.appendChild(tit);
 
     if (!conHistorial.length) {
@@ -128,7 +129,7 @@ function seccionProgresion(c: HTMLElement, rutina: Rutina): void {
     c.appendChild(cont);
     const sel = el("select", "max-width:100%;min-width:220px;padding:8px 10px;border-radius:8px;border:1px solid var(--background-modifier-border);background:var(--background-secondary);color:var(--text-normal);font-size:.9em;");
     for (const e of conHistorial) {
-        const o = document.createElement("option");
+        const o = createEl("option");
         o.value = e.id; o.textContent = e.nombre;
         sel.appendChild(o);
     }
@@ -164,14 +165,17 @@ function seccionProgresion(c: HTMLElement, rutina: Rutina): void {
         ]);
 
         // Historial completo del ejercicio
-        const tabla = document.createElement("table");
+        const tabla = createEl("table");
         tabla.className = "gym-tabla";
-        tabla.innerHTML = "<thead><tr><th>Fecha</th><th>Día</th><th>Series</th><th>Mejor</th><th>1RM</th><th>Volumen</th></tr></thead>";
-        const tb = document.createElement("tbody");
+        const thead = createEl("thead");
+        const trH = thead.createEl("tr");
+        for (const t of ["Fecha", "Día", "Series", "Mejor", "1RM", "Volumen"]) trH.createEl("th", { text: t });
+        tabla.appendChild(thead);
+        const tb = createEl("tbody");
         for (const h of [...hist].reverse()) {
-            const tr = document.createElement("tr");
+            const tr = createEl("tr");
             const celda = (css: string, txt: string): HTMLTableCellElement => {
-                const td = document.createElement("td");
+                const td = createEl("td");
                 if (css) td.className = css;
                 td.textContent = txt;
                 return td;
@@ -199,7 +203,7 @@ function seccionProgresion(c: HTMLElement, rutina: Rutina): void {
 /* ── 4c · Peso corporal e IMC ── */
 function seccionMedidas(c: HTMLElement, medidas: LecturaNota<MedidasDatos>): void {
     const tit = el("div", "gym-tit");
-    tit.innerHTML = `<span>Peso corporal</span> — evolución e IMC`;
+    tit.append(el("span", null, "Peso corporal"), " — evolución e IMC");
     c.appendChild(tit);
     const regs = (medidas.datos?.registros ?? []).filter(r => esFechaValida(r.fecha) && Number.isFinite(Number(r.pesoKg)));
     const u = ultimaMedida(medidas.datos);
@@ -228,7 +232,7 @@ function seccionMedidas(c: HTMLElement, medidas: LecturaNota<MedidasDatos>): voi
 /* ── 4d · Récords personales ── */
 function seccionRecords(c: HTMLElement, rutina: Rutina, sesiones: Sesion[]): void {
     const tit = el("div", "gym-tit");
-    tit.innerHTML = `<span>🏆 Récords personales</span>`;
+    tit.append(el("span", null, "🏆 Récords personales"));
     c.appendChild(tit);
     const filas: string[][] = [];
 

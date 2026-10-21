@@ -43,7 +43,7 @@ export default class GymStone extends Plugin {
         this.registerView(VISTA_FORM, leaf => new VistaForm(leaf));   // legado
 
         /* ── Cinta lateral: la lista de rutinas con un clic ── */
-        this.addRibbonIcon("dumbbell", "Gym Stone: abrir las rutinas", () => void abrirLista());
+        this.addRibbonIcon("dumbbell", "Abrir las rutinas", () => void abrirLista());
 
         /* ── Abrir los archivos del plugin COMO el plugin (truco de Kanban):
               si abres el índice o una rutina desde el explorador, un enlace o
@@ -51,9 +51,10 @@ export default class GymStone extends Plugin {
         this.registerEvent(this.app.workspace.on("file-open", f => {
             if (!f || !esArchivoGym(f.path)) return;
             if (esMdRecienteDelPlugin(f.path)) return;   // fue nuestra propia «abrir como markdown»
-            const hoja = this.app.workspace.getLeavesOfType("markdown")
-                .find(l => (l.view as MarkdownView).file?.path === f.path)
-                ?? this.app.workspace.activeLeaf;
+            const vistasMd = this.app.workspace.getLeavesOfType("markdown");
+            const vistaActiva = this.app.workspace.getActiveViewOfType(MarkdownView);
+            const hoja = vistasMd.find(l => (l.view as MarkdownView).file?.path === f.path)
+                ?? vistasMd.find(l => l.view === vistaActiva);
             if (!hoja || !(hoja.view instanceof MarkdownView)) return;
             void abrirArchivoComoPlugin(hoja, f.path);
         }));

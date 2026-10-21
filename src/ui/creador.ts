@@ -17,7 +17,7 @@ import {
     listarPlantillas, leerPlantilla, plantillaDeRutina, plantillaExiste,
     rutaDatosDe, rutinaVacia, escribirPlantilla,
 } from "../datos";
-import { aNumero, esFechaValida, hoy, limpiarNombre, slug, tsDe } from "../util";
+import { aNumero, clonarJSON, esFechaValida, hoy, limpiarNombre, msgError, slug, tsDe } from "../util";
 import { pesoActual, pesoACampo, pesoAKg } from "../unidades";
 import type { DiaRutina, EjercicioDef, EstadoRutina, Rutina } from "../tipos";
 import { confirmar, el, selectorUnidad, toast } from "./componentes";
@@ -62,7 +62,7 @@ export const montar = async ({ cont, inicial, esEdicion, onGuardado, enHoja = fa
 
     // ── Estado inicial ──
     if (!estado) {
-        const base: Rutina = inicial ? JSON.parse(JSON.stringify(inicial)) : rutinaVacia();
+        const base: Rutina = inicial ? clonarJSON(inicial) : rutinaVacia();
         if (!base.inicio) base.inicio = hoy();
         if (!base.semanas) base.semanas = CONFIG.SEMANAS_POR_DEFECTO;
         if (!base.fin) base.fin = finDesde(base.inicio, base.semanas);
@@ -127,8 +127,8 @@ export const montar = async ({ cont, inicial, esEdicion, onGuardado, enHoja = fa
     let campoOrigen: HTMLDivElement | null = null, campoEstructura: HTMLDivElement | null = null;
     let campoPlantilla: HTMLDivElement | null = null, refPintaPlantilla: (() => void) | null = null;
     const aplicaTipo = () => {
-        const libre = estado!.tipo === "libre";
-        if (libre) estado!.comoPlantilla = false;   // una rutina libre no tiene estructura que plantillear
+        const libre = estado.tipo === "libre";
+        if (libre) estado.comoPlantilla = false;   // una rutina libre no tiene estructura que plantillear
         if (campoOrigen) campoOrigen.style.display = libre ? "none" : "";
         if (campoEstructura) campoEstructura.style.display = libre ? "none" : "";
         if (campoPlantilla) campoPlantilla.style.display = libre ? "none" : "";
@@ -142,11 +142,11 @@ export const montar = async ({ cont, inicial, esEdicion, onGuardado, enHoja = fa
             libre: "Sin días ni ejercicios fijos: cada día anotas lo que has hecho de verdad (ejercicio, peso y reps).",
         };
         for (const t of CONFIG.TIPOS_RUTINA) {
-            const activo = estado!.tipo === t;
+            const activo = estado.tipo === t;
             const b = el("button", "gym-chip" + (activo ? " on" : ""), t === "libre" ? "🗒 Libre" : "📅 Planificada");
             b.type = "button";
             b.setAttribute("aria-pressed", String(activo));
-            if (estado!.modo === "editar") {
+            if (estado.modo === "editar") {
                 // El tipo no se puede cambiar al editar: cambiarlo reescribiría
                 // la estructura de la rutina (días y ejercicios) y sus sesiones
                 b.disabled = true;
@@ -154,8 +154,8 @@ export const montar = async ({ cont, inicial, esEdicion, onGuardado, enHoja = fa
             } else {
                 b.title = ayudaTipo[t] ?? t;
                 b.onclick = () => {
-                    if (estado!.tipo === t) return;
-                    estado!.tipo = t;
+                    if (estado.tipo === t) return;
+                    estado.tipo = t;
                     pintarTipo(); limpiarError();
                 };
             }
@@ -171,20 +171,20 @@ export const montar = async ({ cont, inicial, esEdicion, onGuardado, enHoja = fa
     // ── Origen: plantilla o en blanco ──
     const selPlantilla = el("select");
     const plantillas = listarPlantillas();
-    const opBlanco = document.createElement("option");
+    const opBlanco = createEl("option");
     opBlanco.value = "";
     opBlanco.textContent = "En blanco";
     selPlantilla.appendChild(opBlanco);
     for (const p of plantillas) {
-        const o = document.createElement("option");
+        const o = createEl("option");
         o.value = p; o.textContent = p;
         selPlantilla.appendChild(o);
     }
     selPlantilla.value = estado.plantilla ?? "";
     if (estado.modo === "editar") selPlantilla.disabled = true;
     selPlantilla.onchange = () => {
-        estado!.plantilla = selPlantilla.value;
-        if (estado!.plantilla) aplicarPlantilla(estado!.plantilla);
+        estado.plantilla = selPlantilla.value;
+        if (estado.plantilla) void aplicarPlantilla(estado.plantilla);
         limpiarError();
     };
     campoOrigen = campo("Origen", selPlantilla, plantillas.length
@@ -194,38 +194,38 @@ export const montar = async ({ cont, inicial, esEdicion, onGuardado, enHoja = fa
     const aplicarPlantilla = async (nombre: string): Promise<void> => {
         const r = await leerPlantilla(nombre);
         if (r.error) { error(r.error); return; }
-        if (estado!.dias.length && !(await confirmar("📋 Plantilla",
+        if (estado.dias.length && !(await confirmar("📋 Plantilla",
             `¿Reemplazar la estructura actual por la plantilla «${nombre}»?`,
             "Reemplazar", "Cancelar"))) {
-            selPlantilla.value = estado!.plantilla = "";
+            selPlantilla.value = estado.plantilla = "";
             return;
         }
         const p = r.datos!;
         // Una plantilla ES una estructura: al cargarla la rutina pasa a planificada
         // (si estaba en libre, el usuario está pidiendo cambiar de modelo).
-        estado!.tipo = "planificada";
-        estado!.nombre = estado!.nombre || p.nombre || "";
-        estado!.objetivo = p.objetivo || estado!.objetivo;
-        estado!.semanas = p.semanas || estado!.semanas;
-        estado!.dias = (p.dias ?? []).map(d => ({
+        estado.tipo = "planificada";
+        estado.nombre = estado.nombre || p.nombre || "";
+        estado.objetivo = p.objetivo || estado.objetivo;
+        estado.semanas = p.semanas || estado.semanas;
+        estado.dias = (p.dias ?? []).map(d => ({
             id: d.id || slug(d.nombre || "dia"),
             nombre: d.nombre || "Día",
             diasSemana: [...(d.diasSemana ?? [])],
             ejercicios: (d.ejercicios ?? []).map(e => ({ ...ejercicioVacio(), ...e })),
         }));
-        if (!estado!.dias.length) estado!.dias = [nuevoDia("A")];
-        estado!.nombrePlantilla = estado!.nombrePlantilla || p.nombre || "";
+        if (!estado.dias.length) estado.dias = [nuevoDia("A")];
+        estado.nombrePlantilla = estado.nombrePlantilla || p.nombre || "";
         // El nombre viene de la plantilla cargada: no lo debe pisar el de la rutina
-        estado!.plantillaEditada = true;
+        estado.plantillaEditada = true;
 
         // El estado ya tiene los datos de la plantilla, pero los controles
         // visibles no se redibujan solos: aquí se sincronizan todos
         // (chips de objetivo, nombre, semanas y fecha de fin calculada).
-        inNombre.value = estado!.nombre;
+        inNombre.value = estado.nombre;
         pintarObjetivos();
-        inSemanas.value = String(estado!.semanas);
+        inSemanas.value = String(estado.semanas);
         pintaFin();
-        inPlantillaNombre.value = estado!.nombrePlantilla;
+        inPlantillaNombre.value = estado.nombrePlantilla;
         revisaConflicto();
         limpiarError();
         pintarTipo();   // la plantilla la cambió a planificada: los chips tienen que verse
@@ -235,15 +235,15 @@ export const montar = async ({ cont, inicial, esEdicion, onGuardado, enHoja = fa
     // ── Nombre ──
     const inNombre = el("input");
     inNombre.type = "text";
-    inNombre.placeholder = "P. ej. PPL 12 semanas";
+    inNombre.placeholder = "Ejemplo: PPL 12 semanas";
     inNombre.value = estado.nombre;
     inNombre.oninput = () => {
-        estado!.nombre = inNombre.value;
+        estado.nombre = inNombre.value;
         // El nombre de la plantilla sigue al de la rutina mientras no lo cambies a mano
         // (antes se congelaba con la primera letra tecleada)
-        if (!esEdicion && !estado!.plantillaEditada) {
-            estado!.nombrePlantilla = inNombre.value;
-            inPlantillaNombre.value = estado!.nombrePlantilla;
+        if (!esEdicion && !estado.plantillaEditada) {
+            estado.nombrePlantilla = inNombre.value;
+            inPlantillaNombre.value = estado.nombrePlantilla;
             revisaConflicto();
         }
         actualizaRuta(); limpiarError();
@@ -254,11 +254,11 @@ export const montar = async ({ cont, inicial, esEdicion, onGuardado, enHoja = fa
     const filaObj = el("div", "gym-dias-semana");
     const pintarObjetivos = () => {
         filaObj.innerHTML = "";
-        const extra = estado!.objetivo && !CONFIG.OBJETIVOS.includes(estado!.objetivo) ? [estado!.objetivo] : [];
+        const extra = estado.objetivo && !CONFIG.OBJETIVOS.includes(estado.objetivo) ? [estado.objetivo] : [];
         for (const o of [...CONFIG.OBJETIVOS, ...extra]) {
-            const b = el("button", "gym-chip" + (estado!.objetivo === o ? " on" : ""), o);
+            const b = el("button", "gym-chip" + (estado.objetivo === o ? " on" : ""), o);
             b.type = "button";
-            b.onclick = () => { estado!.objetivo = estado!.objetivo === o ? "" : o; pintarObjetivos(); };
+            b.onclick = () => { estado.objetivo = estado.objetivo === o ? "" : o; pintarObjetivos(); };
             filaObj.appendChild(b);
         }
     };
@@ -276,9 +276,9 @@ export const montar = async ({ cont, inicial, esEdicion, onGuardado, enHoja = fa
         const pintarEstado = () => {
             filaEst.innerHTML = "";
             for (const e of estados) {
-                const b = el("button", "gym-chip" + (estado!.estadoRutina === e.v ? " on" : ""), e.txt);
+                const b = el("button", "gym-chip" + (estado.estadoRutina === e.v ? " on" : ""), e.txt);
                 b.type = "button";
-                b.onclick = () => { estado!.estadoRutina = e.v; pintarEstado(); };
+                b.onclick = () => { estado.estadoRutina = e.v; pintarEstado(); };
                 filaEst.appendChild(b);
             }
         };
@@ -305,10 +305,10 @@ export const montar = async ({ cont, inicial, esEdicion, onGuardado, enHoja = fa
     dur.appendChild(cajaIni); dur.appendChild(cajaSem); dur.appendChild(cajaFin);
     const pintaFin = () => {
         const s = Math.max(1, Number(inSemanas.value) || 1);
-        estado!.semanas = s;
-        txtFin.textContent = finDesde(estado!.inicio, s);
+        estado.semanas = s;
+        txtFin.textContent = finDesde(estado.inicio, s);
     };
-    inInicio.oninput = () => { estado!.inicio = inInicio.value; pintaFin(); limpiarError(); };
+    inInicio.oninput = () => { estado.inicio = inInicio.value; pintaFin(); limpiarError(); };
     inSemanas.oninput = () => { pintaFin(); limpiarError(); };
     campo("Duración", dur, "La rutina se usará durante ese tiempo; se puede extender más adelante desde el dashboard.");
     pintaFin();
@@ -330,12 +330,12 @@ export const montar = async ({ cont, inicial, esEdicion, onGuardado, enHoja = fa
 
     const repintar = (): void => {
         contDias.innerHTML = "";
-        estado!.dias.forEach((dia, i) => contDias.appendChild(tarjetaDia(dia, i)));
+        estado.dias.forEach((dia, i) => contDias.appendChild(tarjetaDia(dia, i)));
         const btnMas = el("button", "gym-chip gym-mt4", "＋ Añadir día");
         btnMas.type = "button";
         btnMas.onclick = () => {
-            const letra = String.fromCharCode(65 + estado!.dias.length);
-            estado!.dias.push({ id: `dia-${slug(letra)}`, nombre: `Día ${letra}`, diasSemana: [], ejercicios: [] });
+            const letra = String.fromCharCode(65 + estado.dias.length);
+            estado.dias.push({ id: `dia-${slug(letra)}`, nombre: `Día ${letra}`, diasSemana: [], ejercicios: [] });
             limpiarError();
             repintar();
         };
@@ -350,7 +350,7 @@ export const montar = async ({ cont, inicial, esEdicion, onGuardado, enHoja = fa
         const cab = el("div", "gym-dia-cab");
         const inNombreDia = el("input", "flex:1;min-width:140px;");
         inNombreDia.type = "text";
-        inNombreDia.placeholder = "Nombre del día (Push, Día A…)";
+        inNombreDia.placeholder = "Nombre del día (push, día a…)";
         inNombreDia.value = dia.nombre;
         inNombreDia.oninput = () => { dia.nombre = inNombreDia.value; };
         cab.appendChild(inNombreDia);
@@ -373,7 +373,7 @@ export const montar = async ({ cont, inicial, esEdicion, onGuardado, enHoja = fa
                         // Exclusivo: si ese día de la semana ya lo tenía OTRO día
                         // de la rutina, se lo "roba" (así el clic siempre se ve)
                         dia.diasSemana.push(n);
-                        for (const otro of estado!.dias) {
+                        for (const otro of estado.dias) {
                             if (otro === dia) continue;
                             otro.diasSemana = (otro.diasSemana ?? []).filter(x => x !== n);
                         }
@@ -392,12 +392,12 @@ export const montar = async ({ cont, inicial, esEdicion, onGuardado, enHoja = fa
         btnBorrarDia.type = "button";
         btnBorrarDia.title = "Borrar este día";
         btnBorrarDia.onclick = async () => {
-            if (estado!.dias.length === 1) { error("La rutina necesita al menos un día."); return; }
+            if (estado.dias.length === 1) { error("La rutina necesita al menos un día."); return; }
             const conRegistros = esEdicion && (inicial?.sesiones ?? []).some(s => s.diaId === dia.id);
             if (conRegistros && !(await confirmar("🗑 Borrar día",
                 `El «${dia.nombre}» tiene sesiones registradas. Sus registros se conservarán en el archivo de datos aunque borres el día de la definición. ¿Borrarlo igualmente?`,
                 "Borrar día", "Cancelar"))) return;
-            estado!.dias.splice(i, 1);
+            estado.dias.splice(i, 1);
             repintar();
         };
         cab.appendChild(btnBorrarDia);
@@ -479,7 +479,7 @@ export const montar = async ({ cont, inicial, esEdicion, onGuardado, enHoja = fa
     // Un día de la semana solo puede pertenecer a un día de la rutina
     const unificaDiasSemana = () => {
         const visto = new Set<number>();
-        for (const d of estado!.dias) {
+        for (const d of estado.dias) {
             d.diasSemana = (d.diasSemana ?? []).filter(n => (visto.has(n) ? false : (visto.add(n), true)));
         }
     };
@@ -496,17 +496,17 @@ export const montar = async ({ cont, inicial, esEdicion, onGuardado, enHoja = fa
     const hintPlantilla = el("div", `font-size:.7em;color:var(--text-error, ${CONFIG.ROJO});margin-top:5px;`);
     contPlantilla.appendChild(hintPlantilla);
     const revisaConflicto = () => {
-        const n = limpiarNombre(estado!.nombrePlantilla || "");
-        const choque = estado!.comoPlantilla && n && plantillaExiste(n);
+        const n = limpiarNombre(estado.nombrePlantilla || "");
+        const choque = estado.comoPlantilla && n && plantillaExiste(n);
         hintPlantilla.textContent = choque
             ? `⚠️ Ya existe una plantilla «${n}.md». No se guardará así para no pisarla: cambia el nombre (o desactiva el botón).`
             : "";
     };
     inPlantillaNombre.oninput = () => {
-        estado!.nombrePlantilla = inPlantillaNombre.value;
+        estado.nombrePlantilla = inPlantillaNombre.value;
         // Si lo dejas igual que el nombre de la rutina (o lo vacías), vuelve a seguirle
-        estado!.plantillaEditada = Boolean(inPlantillaNombre.value.trim()) &&
-            inPlantillaNombre.value.trim() !== (estado!.nombre ?? "").trim();
+        estado.plantillaEditada = Boolean(inPlantillaNombre.value.trim()) &&
+            inPlantillaNombre.value.trim() !== (estado.nombre ?? "").trim();
         revisaConflicto(); limpiarError();
     };
 
@@ -514,23 +514,23 @@ export const montar = async ({ cont, inicial, esEdicion, onGuardado, enHoja = fa
     btnPlantilla.type = "button";
     btnPlantilla.title = "Actívalo para poder reutilizar esta estructura en rutinas futuras";
     const pintaPlantilla = () => {
-        const on = Boolean(estado!.comoPlantilla);
+        const on = Boolean(estado.comoPlantilla);
         btnPlantilla.classList.toggle("on", on);
         btnPlantilla.setAttribute("aria-pressed", String(on));
         inPlantillaNombre.style.display = on ? "" : "none";   // el nombre solo se pide si está activo
     };
     refPintaPlantilla = pintaPlantilla;
     btnPlantilla.onclick = () => {
-        estado!.comoPlantilla = !estado!.comoPlantilla;
+        estado.comoPlantilla = !estado.comoPlantilla;
         // Al activarlo se propone el mismo nombre que el de la rutina
         // (si no lo has cambiado a mano)
-        if (estado!.comoPlantilla && !estado!.plantillaEditada) {
-            estado!.nombrePlantilla = estado!.nombre;
-            inPlantillaNombre.value = estado!.nombrePlantilla;
+        if (estado.comoPlantilla && !estado.plantillaEditada) {
+            estado.nombrePlantilla = estado.nombre;
+            inPlantillaNombre.value = estado.nombrePlantilla;
         }
         pintaPlantilla();
         revisaConflicto(); limpiarError();
-        if (estado!.comoPlantilla) inPlantillaNombre.focus();
+        if (estado.comoPlantilla) inPlantillaNombre.focus();
     };
     pintaPlantilla();
     revisaConflicto();
@@ -545,9 +545,9 @@ export const montar = async ({ cont, inicial, esEdicion, onGuardado, enHoja = fa
     const rutaVista = el("div", "gym-ruta");
     raiz.appendChild(rutaVista);
     const idPropuesto = (): string => {
-        if (estado!.id) return estado!.id;
+        if (estado.id) return estado.id;
         const f = hoy().slice(0, 7);
-        return `rutina-${f}-${slug(estado!.nombre) || "sin-nombre"}`;
+        return `rutina-${f}-${slug(estado.nombre) || "sin-nombre"}`;
     };
     const actualizaRuta = () => {
         rutaVista.empty();
@@ -577,26 +577,26 @@ export const montar = async ({ cont, inicial, esEdicion, onGuardado, enHoja = fa
                 "¿Vaciar el formulario? Se borra todo lo escrito aquí (nombre, objetivo, fechas, días y ejercicios) para empezar de cero. No se toca ninguna rutina ya guardada.",
                 "Vaciar", "Cancelar"))) return;
             // Estado → valores por defecto
-            estado!.nombre = "";
-            estado!.objetivo = "";
-            estado!.tipo = "planificada";
-            estado!.inicio = hoy();
-            estado!.semanas = CONFIG.SEMANAS_POR_DEFECTO;
-            estado!.dias = [nuevoDia("A")];
-            estado!.plantilla = "";
-            estado!.comoPlantilla = false;
-            estado!.nombrePlantilla = "";
-            estado!.plantillaEditada = false;
-            estado!.estadoRutina = "activa";
-            estado!.id = "";
-            estado!.guardado = false;
+            estado.nombre = "";
+            estado.objetivo = "";
+            estado.tipo = "planificada";
+            estado.inicio = hoy();
+            estado.semanas = CONFIG.SEMANAS_POR_DEFECTO;
+            estado.dias = [nuevoDia("A")];
+            estado.plantilla = "";
+            estado.comoPlantilla = false;
+            estado.nombrePlantilla = "";
+            estado.plantillaEditada = false;
+            estado.estadoRutina = "activa";
+            estado.id = "";
+            estado.guardado = false;
             // Controles ligados → lo mismo
             inNombre.value = "";
             selPlantilla.value = "";
             pintarObjetivos();
             pintarTipo();          // vuelve a planificada y se re-habilita la estructura
-            inInicio.value = estado!.inicio;
-            inSemanas.value = String(estado!.semanas);
+            inInicio.value = estado.inicio;
+            inSemanas.value = String(estado.semanas);
             pintaFin();
             pintaPlantilla();          // toggle de plantilla → apagado y nombre oculto
             revisaConflicto();
@@ -618,7 +618,7 @@ export const montar = async ({ cont, inicial, esEdicion, onGuardado, enHoja = fa
 
     const construir = (): Rutina => {
         unificaDiasSemana();
-        const dias = estado!.dias.map((d, i) => ({
+        const dias = estado.dias.map((d, i) => ({
             id: d.id || `dia-${slug(d.nombre || String.fromCharCode(65 + i))}`,
             nombre: limpiarNombre(d.nombre) || `Día ${String.fromCharCode(65 + i)}`,
             diasSemana: [...(d.diasSemana ?? [])],
@@ -633,23 +633,23 @@ export const montar = async ({ cont, inicial, esEdicion, onGuardado, enHoja = fa
             })),
         }));
         const union = [...new Set(dias.flatMap(d => d.diasSemana))].sort();
-        const fin = finDesde(estado!.inicio, estado!.semanas);
-        const libre = estado!.tipo === "libre";
+        const fin = finDesde(estado.inicio, estado.semanas);
+        const libre = estado.tipo === "libre";
         return {
             id: idPropuesto(),
-            nombre: limpiarNombre(estado!.nombre),
-            objetivo: estado!.objetivo || "",
+            nombre: limpiarNombre(estado.nombre),
+            objetivo: estado.objetivo || "",
             tipo: libre ? "libre" : "planificada",
-            inicio: estado!.inicio,
+            inicio: estado.inicio,
             fin,
-            semanas: estado!.semanas,
+            semanas: estado.semanas,
             // La libre NO guarda días: cada sesión lleva su diaId vacío y los
             // ejercicios se anotan dentro de la sesión, no en un plan previo.
             diasSemana: libre ? [] : union,
             dias: libre ? [] : dias,
             sesiones: esEdicion ? (inicial!.sesiones ?? []) : [],
             notasDia: esEdicion ? (inicial!.notasDia ?? []) : [],
-            estado: esEdicion ? estado!.estadoRutina : "activa",
+            estado: esEdicion ? estado.estadoRutina : "activa",
             creado: esEdicion ? (inicial!.creado || hoy()) : hoy(),
             modificado: hoy(),
         };
@@ -678,7 +678,7 @@ export const montar = async ({ cont, inicial, esEdicion, onGuardado, enHoja = fa
     let guardando = false;
 
     const guardar = async (): Promise<void> => {
-        if (estado!.guardado || guardando) return;
+        if (estado.guardado || guardando) return;
         limpiarError();
         unificaDiasSemana();
         const rutina = construir();
@@ -689,8 +689,8 @@ export const montar = async ({ cont, inicial, esEdicion, onGuardado, enHoja = fa
                 ? ` → ${sinDias.map(d => `«${d.nombre}»`).join(", ")}` : ""));
             return;
         }
-        if (estado!.comoPlantilla) {
-            const nomPlant = limpiarNombre(estado!.nombrePlantilla);
+        if (estado.comoPlantilla) {
+            const nomPlant = limpiarNombre(estado.nombrePlantilla);
             if (!nomPlant) { error("Has marcado «guardar como plantilla» pero no le has puesto nombre."); return; }
             if (plantillaExiste(nomPlant)) {
                 error(`Ya existe una plantilla «${nomPlant}.md». Para no pisarla, pon otro nombre de plantilla (o desactiva «📦 Guardar como plantilla») y vuelve a guardar.`);
@@ -708,27 +708,27 @@ export const montar = async ({ cont, inicial, esEdicion, onGuardado, enHoja = fa
             await escribirRutina(rutina);
 
             // 2 · Plantilla opcional (solo estructura, sin fechas ni registros)
-            if (estado!.comoPlantilla) {
+            if (estado.comoPlantilla) {
                 try {
-                    await escribirPlantilla(limpiarNombre(estado!.nombrePlantilla), plantillaDeRutina(rutina));
-                } catch (e: any) {
-                    toast("⚠️ La rutina se guardó, pero la plantilla no: " + (e?.message ?? e), false);
+                    await escribirPlantilla(limpiarNombre(estado.nombrePlantilla), plantillaDeRutina(rutina));
+                } catch (e: unknown) {
+                    toast("⚠️ La rutina se guardó, pero la plantilla no: " + msgError(e), false);
                 }
             }
 
-            estado!.guardado = true;
+            estado.guardado = true;
             guardando = false;
             delete almacen[claveEstado];
             toast(`✅ Rutina guardada → ${rutaDatosDe(rutina.id)}`);
             // 3 · Se abre el dashboard de la rutina en su pestaña
             await abrirRutina(rutina.id);
             if (typeof onGuardado === "function") onGuardado(rutina);
-        } catch (e: any) {
+        } catch (e: unknown) {
             console.error("[Gym Stone]", e);
             guardando = false;
             btnGuardar.disabled = false;
-            btnGuardar.textContent = estado!.modo === "editar" ? "💾 Guardar cambios" : "💾 Guardar rutina";
-            error("No se pudo guardar: " + (e?.message ?? e) + " — tus datos siguen intactos, vuelve a intentarlo.");
+            btnGuardar.textContent = estado.modo === "editar" ? "💾 Guardar cambios" : "💾 Guardar rutina";
+            error("No se pudo guardar: " + msgError(e) + " — tus datos siguen intactos, vuelve a intentarlo.");
         }
     };
     btnGuardar.onclick = guardar;

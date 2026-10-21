@@ -21,7 +21,7 @@ import {
     esSinRegistrar, nombreDia, serieConDatos, seriesHechas, totalSaltadas,
     totalSeries, ultimaMedida, ultimosValores, volumenEjercicio, volumenSesion,
 } from "../datos";
-import { aNumero, decimal, esFechaValida, fechaLegible, hoy, horaAhora } from "../util";
+import { aNumero, clonarJSON, decimal, esFechaValida, fechaLegible, hoy, horaAhora, msgError } from "../util";
 import { pesoACampo, pesoActual, pesoAKg, pesoTexto, tallaTexto } from "../unidades";
 import type {
     EjercicioDef, EjercicioSesion, LecturaNota, Medida, MedidasDatos,
@@ -63,7 +63,7 @@ interface SesionTrabajo {
 export function seccionRegistro(
     c: HTMLElement, rutina: Rutina, pintar: Pintar, medidas: LecturaNota<MedidasDatos>,
 ): void {
-    c.appendChild(el("div", "gym-tit", "")).innerHTML = `<span>⚡ Registro rápido</span>`;
+    c.appendChild(el("div", "gym-tit")).append(el("span", null, "⚡ Registro rápido"));
 
     // Modo sesión guiada: pensado para el móvil, un ejercicio a la vez con descansos
     const bGuiada = el("button", "gym-btn primario gym-btn-guiada", "🎯 Empezar sesión guiada");
@@ -89,7 +89,7 @@ export function seccionRegistro(
     // Al cambiarla se repinta entera la rutina para que todo quede coherente.
     const cUnidad = el("div", "display:flex;align-items:center;gap:8px;margin:6px 0 2px;");
     cUnidad.appendChild(el("div", "font-size:.78em;font-weight:700;letter-spacing:.05em;text-transform:uppercase;opacity:.7;", "Peso en"));
-    cUnidad.appendChild(selectorUnidad(() => pintar()));
+    cUnidad.appendChild(selectorUnidad(() => void pintar()));
     c.appendChild(cUnidad);
 
     const u = ultimaMedida(medidas.datos);
@@ -122,7 +122,7 @@ export function formularioSesion(
     m.caja.appendChild(cajaF);
 
     const datos: SesionTrabajo = esEdicion
-        ? JSON.parse(JSON.stringify(sesion))
+        ? clonarJSON(sesion as Sesion)
         : {
             fecha: fecha || hoy(),
             diaId: diaId || rutina.dias?.[0]?.id || "",
@@ -143,7 +143,7 @@ export function formularioSesion(
     const cD = el("div", "flex:1;min-width:140px;");
     const selDia = el("select");
     const nuevaOp = (valor: string, texto: string): HTMLOptionElement => {
-        const o = document.createElement("option");
+        const o = createEl("option");
         o.value = valor; o.textContent = texto;
         return o;
     };
@@ -297,7 +297,7 @@ export function formularioSesion(
         };
 
         const inReps = el("input"); inReps.type = "number"; inReps.min = "0"; inReps.step = "1";
-        inReps.inputMode = "numeric"; inReps.placeholder = "reps";
+        inReps.inputMode = "numeric"; inReps.placeholder = "Reps";
         inReps.value = comun("reps") == null ? "" : String(comun("reps"));
         inReps.oninput = () => aplicaComun("reps", aNumero(inReps.value));
         celda("Reps", inReps, "Repeticiones en todas las series (si varían, se vacía y lo que escribas se aplica a todas)");
@@ -418,7 +418,7 @@ export function formularioSesion(
                 const cN = el("div", "gym-serie-num" + (saltada ? " gym-tachado" : ""), `${i + 1}`);
                 f.appendChild(cN);
                 const r = el("input"); r.type = "number"; r.min = "0"; r.step = "1"; r.inputMode = "numeric";
-                r.placeholder = "reps"; r.value = String(s.reps ?? "");
+                r.placeholder = "Reps"; r.value = String(s.reps ?? "");
                 r.oninput = () => { s.reps = aNumero(r.value); if (conValor(r.value)) marcarHecho(); actualizaVol(); };
                 const p = el("input"); p.type = "number"; p.min = "0"; p.step = "0.5"; p.inputMode = "decimal";
                 // Se teclea en la unidad activa; s.peso sigue guardándose en kg
@@ -426,7 +426,7 @@ export function formularioSesion(
                 p.oninput = () => { s.peso = pesoAKg(p.value); if (conValor(p.value)) marcarHecho(); actualizaVol(); };
                 if (saltada) {   // serie saltada: sus campos no se editan, solo se puede rehacer
                     r.disabled = p.disabled = true;
-                    r.placeholder = p.placeholder = "saltada";
+                    r.placeholder = p.placeholder = "Saltada";
                 }
                 const b = el("button", "gym-mini", saltada ? "↩" : "×");
                 b.type = "button";
@@ -574,10 +574,10 @@ export function formularioSesion(
             await escribirRutina(rutina);
             m.cerrar();
             toast(`✅ Sesión del ${fechaLegible(f)} guardada`);
-            pintar();
-        } catch (e) {
+            void pintar();
+        } catch (e: unknown) {
             console.error("[Gym Stone sesión]", e);
-            toast("⚠️ No pude guardar: " + (e?.message ?? e), false);
+            toast("⚠️ No pude guardar: " + msgError(e), false);
         }
     };
     acciones.appendChild(guardar);
@@ -642,7 +642,7 @@ export function formularioAnotacion(rutina: Rutina, fecha: string, pintar: Pinta
     cF.appendChild(el("div", "gym-et", "Fecha")); cF.appendChild(inFecha);
     m.caja.appendChild(cF);
     const cT = el("div", "gym-fila");
-    const inTxt = el("textarea"); inTxt.placeholder = "P. ej. hombro molesto, dormí mal, gym lleno…";
+    const inTxt = el("textarea"); inTxt.placeholder = "Ejemplo: hombro molesto, dormí mal, gym lleno…";
     cT.appendChild(el("div", "gym-et", "Anotación"));
     cT.appendChild(inTxt);
     m.caja.appendChild(cT);
@@ -659,10 +659,10 @@ export function formularioAnotacion(rutina: Rutina, fecha: string, pintar: Pinta
             await escribirRutina(rutina);
             m.cerrar();
             toast("✅ Anotación guardada");
-            pintar();
-        } catch (e) {
+            void pintar();
+        } catch (e: unknown) {
             console.error("[Gym Stone anotación]", e);
-            toast("⚠️ No pude guardar la anotación: " + (e?.message ?? e), false);
+            toast("⚠️ No pude guardar la anotación: " + msgError(e), false);
         }
     };
     acciones.appendChild(ok);
@@ -727,7 +727,7 @@ export function formularioMedidas(medidas: LecturaNota<MedidasDatos>, pintar: Pi
         // El IMC se calcula SIEMPRE en kg (peso guardado), no en la unidad mostrada
         const p = pesoAKg(inPeso.value), t = aNumero(inTalla.value) ?? (u.tallaCm ? Number(u.tallaCm) : null);
         if (p && t) {
-            linea.textContent = "IMC resultante: ";
+            linea.textContent = "Imc resultante: ";
             linea.append(el("b", null, decimal(p / Math.pow(t / 100, 2))));
         } else linea.textContent = "";
     };
@@ -759,8 +759,8 @@ export function formularioMedidas(medidas: LecturaNota<MedidasDatos>, pintar: Pi
             await escribirMedidas(medidas.datos!);
             m.cerrar();
             toast(`✅ Medida guardada: ${pesoTexto(registro.pesoKg)}`);
-            pintar();
-        } catch (e) { toast("⚠️ No pude guardar la medida: " + (e?.message ?? e), false); }
+            void pintar();
+        } catch (e: unknown) { toast("⚠️ No pude guardar la medida: " + msgError(e), false); }
     };
     acciones.appendChild(ok);
     acciones.appendChild(btn("Cancelar", "", () => m.cerrar()));

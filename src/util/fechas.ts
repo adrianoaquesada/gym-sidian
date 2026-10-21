@@ -3,6 +3,7 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 
 import { DIAS, DIAS_LARGO, DIA_MS, MESES } from "../config";
+import { aTexto } from "./texto";
 
 export { DIAS, DIAS_LARGO, MESES, DIA_MS };
 
@@ -21,7 +22,7 @@ export const horaAhora = (): string => {
 
 // "2026-10-12" → milisegundos de esa medianoche LOCAL
 export const tsDe = (f: unknown): number => {
-    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(f ?? "").trim());
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(aTexto(f).trim());
     return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).getTime() : NaN;
 };
 
@@ -55,7 +56,7 @@ export const diaSemana = (f: string): number => {
 export const nombreMes = (m: number): string => MESES[m] ?? String(m);
 
 export const fechaLegible = (f: unknown): string => {
-    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(f ?? ""));
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(aTexto(f));
     return m ? `${Number(m[3])} ${MESES[Number(m[2]) - 1].slice(0, 3)} ${m[1]}` : "–";
 };
 

@@ -34,7 +34,7 @@ export class VistaForm extends ItemView {
     }
 
     async onOpen(): Promise<void> {
-        const st = this.leaf.getViewState()?.state as EstadoForm | undefined;
+        const st = this.leaf.getViewState()?.state;
         this.modo = st?.modo === "editar" ? "editar" : "crear";
         this.rutinaId = typeof st?.rutinaId === "string" ? st.rutinaId : null;
         this.acciones();

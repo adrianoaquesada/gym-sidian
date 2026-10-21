@@ -34,7 +34,7 @@ export const hojaFormulario = async ({ modo, rutinaId = null }: OpcionesHoja): P
 
     const btnCerrar = el("button", "gym-hoja-x", "✕");
     btnCerrar.type = "button";
-    btnCerrar.title = "Cerrar (Esc)";
+    btnCerrar.title = "Cerrar (esc)";
 
     const tit = el("div", "gym-hoja-tit");   // flex:1 en CSS: el título a la izquierda, la ✕ a la derecha
     tit.append(

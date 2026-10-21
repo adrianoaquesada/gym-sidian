@@ -139,7 +139,7 @@ export interface GruposDatos {
 
 /* ── Notas y lecturas ───────────────────────────────────────────────────── */
 
-export type MetaNota = Record<string, any>;
+export type MetaNota = Record<string, unknown>;
 
 export interface LecturaNota<T> {
     datos?: T;

@@ -17,7 +17,7 @@ import {
     programados, seriesHechas, sesionesEn, totalSaltadas, totalSeries,
     volumenEjercicio, volumenSesion,
 } from "../datos";
-import { decimal, diaSemana, dos, esFechaValida, fechaLegible, hoy,
+import { decimal, diaSemana, dos, esFechaValida, fechaLegible, hoy, msgError,
     nombreMes, sumarDias, tsAhora, tsDe } from "../util";
 import { pesoTexto } from "../unidades";
 import type { DiaRutina, Rutina, Sesion } from "../tipos";
@@ -31,8 +31,10 @@ const almacenMeses = new Map<string, number>();
 /* ══════════════════ 2 · Calendario mensual ══════════════════ */
 
 export function seccionCalendario(c: HTMLElement, rutina: Rutina, pintar: Pintar): void {
-    c.appendChild(el("div", "gym-tit", "")).innerHTML =
-        `<span>📅 Calendario</span> — clic en un cuadro para ver (y editar) el detalle de ese día`;
+    c.appendChild(el("div", "gym-tit")).append(
+        el("span", null, "📅 Calendario"),
+        " — clic en un cuadro para ver (y editar) el detalle de ese día",
+    );
 
     // Sesiones agrupadas por fecha
     const porDia = new Map<string, Sesion[]>();
@@ -68,7 +70,7 @@ export function seccionCalendario(c: HTMLElement, rutina: Rutina, pintar: Pintar
     const selector = el("select", "padding:5px 8px;border-radius:6px;border:1px solid var(--background-modifier-border);background:var(--background-primary);color:var(--text-normal);font-size:.85em;");
     for (const clave of [...new Set(claves)].sort().reverse()) {
         const n = [...porDia.entries()].filter(([d]) => d.startsWith(clave)).reduce((t, [, a]) => t + a.length, 0);
-        const o = document.createElement("option");
+        const o = createEl("option");
         o.value = String(aMes(clave));
         o.textContent = `${nombreMes(Number(clave.slice(5, 7)) - 1)} ${clave.slice(0, 4)} (${n})`;
         selector.appendChild(o);
@@ -268,11 +270,11 @@ const tablaSemanas = (
     }
     if (!semanas.size) return el("div");
     const wrap = el("div", "margin-top:10px;");
-    const tabla = document.createElement("table");
+    const tabla = createEl("table");
     tabla.className = "gym-tabla";
     // La columna «Adherencia» solo tiene sentido con días programados
-    const thead = document.createElement("thead");
-    const trH = document.createElement("tr");
+    const thead = createEl("thead");
+    const trH = createEl("tr");
     for (const h of libre
         ? ["Semana", "Sesiones", "Días", "Volumen", "Minutos"]
         : ["Semana", "Hechas", "Volumen", "Minutos", "Adherencia"]) {
@@ -280,15 +282,15 @@ const tablaSemanas = (
     }
     thead.appendChild(trH);
     tabla.appendChild(thead);
-    const tb = document.createElement("tbody");
+    const tb = createEl("tbody");
     const celda = (txt: string, cls?: string): HTMLTableCellElement => {
-        const td = document.createElement("td");
+        const td = createEl("td");
         if (cls) td.className = cls;
         td.textContent = txt;
         return td;
     };
     for (const w of [...semanas.values()].sort((a, b) => (a.desde < b.desde ? -1 : 1))) {
-        const tr = document.createElement("tr");
+        const tr = createEl("tr");
         tr.appendChild(celda(`${w.desde.slice(8)}/${w.desde.slice(5, 7)} → ${w.hasta.slice(8)}/${w.hasta.slice(5, 7)}`));
         // En la libre solo hay sesiones contadas; en la planificada, hechas/programadas
         tr.appendChild(celda(libre ? String(w.hechas) : `${w.hechas}/${w.prog || "–"}`));
@@ -583,10 +585,10 @@ export function detalleDia(rutina: Rutina, fecha: string, pintar: Pintar): void 
                     await escribirRutina(rutina);
                     toast("✅ Sesión borrada");
                     m.cerrar();
-                    pintar();
-                } catch (e: any) {
+                    void pintar();
+                } catch (e: unknown) {
                     console.error("[Gym Stone borrar sesión]", e);
-                    toast("⚠️ No pude borrar la sesión: " + (e?.message ?? e), false);
+                    toast("⚠️ No pude borrar la sesión: " + msgError(e), false);
                 }
             }));
             cab.append(tit, acciones);
@@ -595,10 +597,13 @@ export function detalleDia(rutina: Rutina, fecha: string, pintar: Pintar): void 
             const lt = lineaTiempo(s);   // 🕒 con «t» (guiada): se ve toda la sesión en su eje
             if (lt) box.appendChild(lt);
 
-            const tabla = document.createElement("table");
+            const tabla = createEl("table");
             tabla.className = "gym-tabla";
-            tabla.innerHTML = "<thead><tr><th>Ejercicio</th><th>Series (reps × peso)</th><th>Vol.</th><th>Notas</th></tr></thead>";
-            const tb = document.createElement("tbody");
+            const thead = createEl("thead");
+            const trH = thead.createEl("tr");
+            for (const t of ["Ejercicio", "Series (reps × peso)", "Vol.", "Notas"]) trH.createEl("th", { text: t });
+            tabla.appendChild(thead);
+            const tb = createEl("tbody");
             for (const e of s.ejercicios ?? []) {
                 const sinReg = esSinRegistrar(e);
                 const celdas = (e.series ?? []).map(x => esSaltada(x)
@@ -625,12 +630,12 @@ export function detalleDia(rutina: Rutina, fecha: string, pintar: Pintar): void 
                     if (rpmEj != null) entre.append(` · `, el("b", null, rpmEj.toFixed(1)), " reps/min");
                     lineaT.append(" ", entre);
                 }
-                const tr = document.createElement("tr");
+                const tr = createEl("tr");
                 const tdNom = el("td", "gym-td-nom", e.nombre || e.ejercicioId || "–");
                 if (sinReg) tdNom.appendChild(el("div", "gym-sinreg gym-td-sub", "⏳ sin registrar"));
                 else if (nSaltadas) tdNom.appendChild(el("div", "gym-td-sub",
                     `${nHechas} de ${(e.series ?? []).length} hechas`));
-                const tdSeries = document.createElement("td");
+                const tdSeries = createEl("td");
                 if (celdas.length) {
                     celdas.forEach((c, i) => { if (i) tdSeries.append(" · "); tdSeries.append(c); });
                 } else tdSeries.append("–");
@@ -649,7 +654,7 @@ export function detalleDia(rutina: Rutina, fecha: string, pintar: Pintar): void 
         for (const a of anotaciones) {
             const box = el("div", "gym-ej-reg");
             const cab = el("div", "gym-ej-reg-cab");
-            cab.innerHTML = `<div style="font-weight:600">📝 Anotación</div>`;
+            cab.appendChild(el("div", "gym-td-nom", "📝 Anotación"));
             const b = el("button", "gym-mini", "🗑 Borrar");
             b.type = "button";
             b.onclick = async () => {
@@ -658,10 +663,10 @@ export function detalleDia(rutina: Rutina, fecha: string, pintar: Pintar): void 
                     if (i >= 0) rutina.notasDia.splice(i, 1);
                     await escribirRutina(rutina);
                     rePintar();
-                    pintar();
-                } catch (e: any) {
+                    void pintar();
+                } catch (e: unknown) {
                     console.error("[Gym Stone borrar anotación]", e);
-                    toast("⚠️ No pude borrar la anotación: " + (e?.message ?? e), false);
+                    toast("⚠️ No pude borrar la anotación: " + msgError(e), false);
                 }
             };
             cab.appendChild(b);

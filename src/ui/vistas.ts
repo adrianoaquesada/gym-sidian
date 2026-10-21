@@ -104,8 +104,8 @@ export const abrirArchivoComoPlugin = async (leaf: WorkspaceLeaf, ruta: string):
 
 /* Al revés: la MISMA pestaña del plugin, mostrada como markdown crudo */
 export const abrirComoMarkdown = (ruta: string): void => {
-    const hoja = aplicacion().workspace.activeLeaf;
-    if (!hoja) return;
+    // La pestaña más reciente disponible (la activa, si la hay)
+    const hoja = aplicacion().workspace.getLeaf(false);
     if (!aplicacion().vault.getAbstractFileByPath(ruta)) {
         toast("⚠️ Aún no existe ese archivo: se creará al guardar.");
         return;

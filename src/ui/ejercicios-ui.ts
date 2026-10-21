@@ -9,7 +9,7 @@ import { catalogoGestion, renombrarEjercicio, type EjercicioGestion } from "../d
 import { cargarGrupos, fijarGrupo, gruposEnMemoria, purgarGruposSinUsar } from "../datos/grupos";
 import type { EjercicioCatalogo, Rutina } from "../tipos";
 import { pesoTexto } from "../unidades";
-import { aNumero, fechaLegible, limpiarNombre, norm } from "../util";
+import { aNumero, fechaLegible, limpiarNombre, msgError, norm } from "../util";
 import { confirmar, modal, pedirTexto, ponerX, toast, el } from "./componentes";
 
 /* Traduce un nombre escrito a mano a un { id, nombre } ESTABLE.
@@ -161,7 +161,7 @@ export const elegirEjercicio = (
 
     const inNombre = el("input");
     inNombre.type = "text";
-    inNombre.placeholder = "Busca (p. ej. «press») o escribe uno nuevo";
+    inNombre.placeholder = "Busca (por ejemplo, «press») o escribe uno nuevo";
     inNombre.style.cssText = "width:100%;min-height:46px;padding:10px 12px;border-radius:8px;" +
         "border:1px solid var(--background-modifier-border);background:var(--background-secondary);" +
         "color:var(--text-normal);font-size:1em;box-sizing:border-box;";
@@ -320,7 +320,7 @@ export const elegirEjercicio = (
     // se repinta la lista entera (sigue sin cortes) para que el buscador encuentre
     // también los ejercicios que solo has hecho en otras rutinas. Si falla la
     // lectura, se queda lo local: el selector sigue funcionando igual que antes.
-    (async () => {
+    void (async () => {
         let total: EjercicioCatalogo[] | null = null;
         try { total = await catalogoEjerciciosTodas(rutina); }
         catch { total = null; }
@@ -359,7 +359,7 @@ export const gestionarEjercicios = (): void => {
     m.caja.appendChild(inBusca);
 
     // Un solo datalist compartido por todos los inputs de grupo (sugerencias)
-    const dl = document.createElement("datalist");
+    const dl = createEl("datalist");
     dl.id = "gym-grupos-dl";
     m.caja.appendChild(dl);
 
@@ -390,9 +390,9 @@ export const gestionarEjercicios = (): void => {
             btnPurga.disabled = true;
             const fuera = await purgarGruposSinUsar(new Set(cat.map(x => x.id)));
             toast(`🧹 ${fuera.length} entrada(s) quitada(s) del fichero de grupos.`);
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error("[Gym Stone purga grupos]", err);
-            toast("⚠️ No pude purgar: " + (err?.message ?? err), false);
+            toast("⚠️ No pude purgar: " + msgError(err), false);
         }
         btnPurga.disabled = false;
         try { cat = await catalogoGestion(); } catch { /* se queda lo leído */ }
@@ -410,7 +410,7 @@ export const gestionarEjercicios = (): void => {
         for (const e of cat) if (e.grupo) sugeridos.add(e.grupo);
         dl.innerHTML = "";
         for (const g of [...sugeridos].sort((a, b) => a.localeCompare(b, "es"))) {
-            const o = document.createElement("option"); o.value = g;
+            const o = createEl("option"); o.value = g;
             dl.appendChild(o);
         }
 
@@ -443,7 +443,7 @@ export const gestionarEjercicios = (): void => {
             inN.type = "text"; inN.value = e.nombre;
             inN.style.cssText = estInput;
             const inG = el("input");
-            inG.type = "text"; inG.value = e.grupo; inG.placeholder = "Grupo (p. ej. Pecho)";
+            inG.type = "text"; inG.value = e.grupo; inG.placeholder = "Grupo (por ejemplo: Pecho)";
             inG.setAttribute("list", dl.id);
             inG.style.cssText = "flex:0 1 130px;" + estInput;
 
@@ -489,10 +489,10 @@ export const gestionarEjercicios = (): void => {
                                      : `🏷 «${nuevoNombre}»: sin grupo`);
                     cat = await catalogoGestion();   // refrescar nombres, grupos y orden
                     pintar();
-                } catch (err: any) {
+                } catch (err: unknown) {
                     guardar.disabled = false;
                     console.error("[Gym Stone renombrar]", err);
-                    toast("⚠️ No pude guardar: " + (err?.message ?? err), false);
+                    toast("⚠️ No pude guardar: " + msgError(err), false);
                 }
             };
 
@@ -519,9 +519,9 @@ export const gestionarEjercicios = (): void => {
 
     void (async () => {
         try { cat = await catalogoGestion(); }
-        catch (e: any) {
+        catch (e: unknown) {
             console.error("[Gym Stone catálogo]", e);
-            toast("⚠️ No pude leer el catálogo: " + (e?.message ?? e), false);
+            toast("⚠️ No pude leer el catálogo: " + msgError(e), false);
         }
         cargando = false;
         pintar();

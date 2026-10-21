@@ -18,7 +18,7 @@ import {
     plantillaExiste, resumenLibre, semanaActual, semanasTotales,
     transcurrida,
 } from "../datos";
-import { fechaLegible, hoy, limpiarNombre, sumarDias } from "../util";
+import { clonarJSON, fechaLegible, hoy, limpiarNombre, msgError, sumarDias } from "../util";
 import { pesoTexto } from "../unidades";
 import type { LecturaNota, MedidasDatos, Rutina } from "../tipos";
 import { btn, el, KPI, modal, pedirTexto, toast } from "./componentes";
@@ -194,9 +194,9 @@ const cambiarEstado = async (rutina: Rutina, pintar: Pintar): Promise<void> => {
                 m.cerrar();
                 toast(`✅ Estado: ${valor}`);
                 await pintar();
-            } catch (e: any) {
+            } catch (e: unknown) {
                 console.error("[Gym Stone estado]", e);
-                toast("⚠️ No pude cambiar el estado: " + (e?.message ?? e), false);
+                toast("⚠️ No pude cambiar el estado: " + msgError(e), false);
             }
         }));
     }
@@ -211,9 +211,9 @@ const extender = async (rutina: Rutina, pintar: Pintar): Promise<void> => {
         await escribirRutina(rutina);
         toast(`✅ Rutina extendida hasta el ${rutina.fin}`);
         await pintar();
-    } catch (e: any) {
+    } catch (e: unknown) {
         console.error("[Gym Stone extender]", e);
-        toast("⚠️ No pude extender la rutina: " + (e?.message ?? e), false);
+        toast("⚠️ No pude extender la rutina: " + msgError(e), false);
     }
 };
 
@@ -224,7 +224,7 @@ const duplicar = async (rutina: Rutina): Promise<void> => {
     if (nombre === null) return;
     const limpio = limpiarNombre(nombre);
     if (!limpio) { toast("⚠️ El nombre de la copia está vacío.", false); return; }
-    const copia: Rutina = JSON.parse(JSON.stringify(rutina));
+    const copia: Rutina = clonarJSON(rutina);
     copia.id = await idNuevo(limpio);
     copia.nombre = limpio;
     copia.sesiones = [];         // la copia arranca sin registros
@@ -236,9 +236,9 @@ const duplicar = async (rutina: Rutina): Promise<void> => {
         const ruta = await escribirRutina(copia);
         toast(`✅ Rutina duplicada → ${ruta}`);
         await abrirRutina(copia.id);
-    } catch (e: any) {
+    } catch (e: unknown) {
         console.error("[Gym Stone duplicar]", e);
-        toast("⚠️ No pude duplicar: " + (e?.message ?? e), false);
+        toast("⚠️ No pude duplicar: " + msgError(e), false);
     }
 };
 
@@ -254,5 +254,5 @@ const guardarComoPlantilla = async (rutina: Rutina): Promise<void> => {
     try {
         const ruta = await escribirPlantilla(limpio, plantillaDeRutina(rutina));
         toast(`✅ Plantilla guardada → ${ruta}`);
-    } catch (e: any) { toast("⚠️ No pude guardar la plantilla: " + (e?.message ?? e), false); }
+    } catch (e: unknown) { toast("⚠️ No pude guardar la plantilla: " + msgError(e), false); }
 };

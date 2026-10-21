@@ -29,7 +29,7 @@ export function normalizarAjustes(datos: Partial<AjustesGym> | null | undefined)
     const out: AjustesGym = { ...AJUSTES_POR_DEFECTO };
     if (datos && typeof datos === "object") {
         for (const k of Object.keys(AJUSTES_POR_DEFECTO) as (keyof AjustesGym)[]) {
-            const v = (datos as Record<string, any>)[k];
+            const v = (datos as Record<string, unknown>)[k];
             if (typeof v === "string" && v.trim()) out[k] = v.trim() as never;
         }
     }
