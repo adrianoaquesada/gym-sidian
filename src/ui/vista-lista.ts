@@ -12,7 +12,7 @@ import { CONFIG } from "../config";
 import { aplicacion, conf } from "../estado";
 import { borrarRutina, leerIndice, leerMedidas, leerRutina, ultimaMedida } from "../datos";
 import type { IndiceRutina } from "../tipos";
-import { diffDias, esc, fechaLegible, hoy } from "../util";
+import { diffDias, fechaLegible, hoy } from "../util";
 import { fijarUnidadPeso, pesoActual, pesoTexto, tallaTexto, unidadContraria } from "../unidades";
 import { KPI, btn, caja, confirmar, el, toast } from "./componentes";
 import { pintarCabecera } from "./cabecera";

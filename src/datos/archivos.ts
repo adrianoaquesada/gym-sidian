@@ -50,7 +50,7 @@ export const escribirSeguro = async (ruta: string, contenido: string): Promise<v
         // Nuevo: temporal + rename (atómico a nivel de sistema de archivos)
         const tmp = `${ruta.replace(/\.md$/, "")}.tmp.md`;
         const previo = vault.getAbstractFileByPath(tmp);
-        if (previo) await vault.delete(previo);        // restos de un corte anterior
+        if (previo) await aplicacion().fileManager.trashFile(previo);   // restos de un corte anterior (respeta la papelera del usuario)
         const f = await vault.create(tmp, contenido);
         await aplicacion().fileManager.renameFile(f, ruta);
         return;

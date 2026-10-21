@@ -13,7 +13,7 @@ import {
     resumenLibre, semanaActual, semanasTotales, totalSeries, ultimaMedida,
     volumenSesion,
 } from "../datos";
-import { decimal, dos, esc, esFechaValida, fechaLegible, nombreMes, tsDe } from "../util";
+import { decimal, dos, esFechaValida, fechaLegible, nombreMes, tsDe } from "../util";
 import { pesoActual, pesoMostrar, pesoTexto, tallaTexto } from "../unidades";
 import type { LecturaNota, MedidasDatos, Rutina, Sesion } from "../tipos";
 import { cajaColapsable, el, KPI, limitaAlto, tablaEn } from "./componentes";
@@ -65,7 +65,8 @@ export function seccionEstadisticas(
 
     // Volumen por sesión (gráfica)
     const titSes = el("div", "gym-tit");
-    titSes.innerHTML = `<span>Volumen por sesión</span> — cada punto es una sesión (${pesoActual()} × reps)`;
+    titSes.append(el("span", null, "Volumen por sesión"),
+        ` — cada punto es una sesión (${pesoActual()} × reps)`);
     c2.appendChild(titSes);
     grafica(c2, [{
         nombre: "Volumen", color: CONFIG.NARANJA,
@@ -169,12 +170,20 @@ function seccionProgresion(c: HTMLElement, rutina: Rutina): void {
         const tb = document.createElement("tbody");
         for (const h of [...hist].reverse()) {
             const tr = document.createElement("tr");
-            tr.innerHTML = `<td style="white-space:nowrap">${fechaLegible(h.fecha)}</td>` +
-                `<td style="opacity:.75">${esc(nombreDia(rutina, h.diaId))}</td>` +
-                `<td>${h.series.map(s => `${s.reps ?? "–"}×${pesoTexto(s.peso)}`).join(" · ")}</td>` +
-                `<td>${h.mejor.reps ?? "–"} × ${pesoTexto(h.mejor.peso)}</td>` +
-                `<td>${pesoTexto(h.oneRM || null)}</td>` +
-                `<td>${pesoTexto(h.volumen)}</td>`;
+            const celda = (css: string, txt: string): HTMLTableCellElement => {
+                const td = document.createElement("td");
+                if (css) td.className = css;
+                td.textContent = txt;
+                return td;
+            };
+            tr.append(
+                celda("gym-nowrap", fechaLegible(h.fecha)),
+                celda("gym-tenue", nombreDia(rutina, h.diaId)),
+                celda("", h.series.map(s => `${s.reps ?? "–"}×${pesoTexto(s.peso)}`).join(" · ")),
+                celda("", `${h.mejor.reps ?? "–"} × ${pesoTexto(h.mejor.peso)}`),
+                celda("", pesoTexto(h.oneRM || null)),
+                celda("", pesoTexto(h.volumen)),
+            );
             tb.appendChild(tr);
         }
         tabla.appendChild(tb);
@@ -246,5 +255,5 @@ function seccionRecords(c: HTMLElement, rutina: Rutina, sesiones: Sesion[]): voi
         c.appendChild(el("div", "opacity:.7;font-size:.86em;", "Registra tu primera sesión para ver los récords."));
         return;
     }
-    tablaEn(c, ["Récord", "Valor"], filas.slice(0, 14).map(f => [esc(f[0]), `<b>${esc(f[1])}</b>`]));
+    tablaEn(c, ["Récord", "Valor"], filas.slice(0, 14).map(f => [f[0], el("b", null, f[1])]));
 }

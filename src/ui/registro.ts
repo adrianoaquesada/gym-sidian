@@ -21,7 +21,7 @@ import {
     esSinRegistrar, nombreDia, serieConDatos, seriesHechas, totalSaltadas,
     totalSeries, ultimaMedida, ultimosValores, volumenEjercicio, volumenSesion,
 } from "../datos";
-import { aNumero, decimal, esc, esFechaValida, fechaLegible, hoy, horaAhora } from "../util";
+import { aNumero, decimal, esFechaValida, fechaLegible, hoy, horaAhora } from "../util";
 import { pesoACampo, pesoActual, pesoAKg, pesoTexto, tallaTexto } from "../unidades";
 import type {
     EjercicioDef, EjercicioSesion, LecturaNota, Medida, MedidasDatos,
@@ -66,10 +66,9 @@ export function seccionRegistro(
     c.appendChild(el("div", "gym-tit", "")).innerHTML = `<span>⚡ Registro rápido</span>`;
 
     // Modo sesión guiada: pensado para el móvil, un ejercicio a la vez con descansos
-    const bGuiada = el("button", "gym-btn primario", "🎯 Empezar sesión guiada");
+    const bGuiada = el("button", "gym-btn primario gym-btn-guiada", "🎯 Empezar sesión guiada");
     bGuiada.type = "button";
     bGuiada.id = "gym-btn-guiada";
-    bGuiada.style.cssText = "width:100%;min-height:52px;font-size:1em;margin-bottom:8px;";
     bGuiada.title = esLibre(rutina)
         ? "Pantalla completa con cronómetro y descansos: los ejercicios se van añadiendo sobre la marcha"
         : "Un ejercicio a la vez, con temporizador de descanso: cómodo desde el móvil";
@@ -95,10 +94,14 @@ export function seccionRegistro(
 
     const u = ultimaMedida(medidas.datos);
     const linea = el("div", "font-size:.84em;opacity:.8;");
-    linea.innerHTML = u.pesoKg
-        ? `Última medida: <b>${pesoTexto(u.pesoKg)}</b> · ${tallaTexto(u.tallaCm)}` +
-          (u.imc ? ` · IMC <b>${decimal(u.imc)}</b>` : "") + ` <span style="opacity:.6">(${fechaLegible(u.fecha)})</span>`
-        : "Todavía no hay medidas de peso ni talla registradas.";
+    if (u.pesoKg) {
+        linea.append("Última medida: ", el("b", null, pesoTexto(u.pesoKg)),
+            ` · ${tallaTexto(u.tallaCm)}`);
+        if (u.imc) linea.append(" · IMC ", el("b", null, decimal(u.imc)));
+        linea.append(" ", el("span", "gym-tenue", `(${fechaLegible(u.fecha)})`));
+    } else {
+        linea.textContent = "Todavía no hay medidas de peso ni talla registradas.";
+    }
     c.appendChild(linea);
 }
 
@@ -367,39 +370,41 @@ export function formularioSesion(
         // en la rutina» solo aplica al que estuvo en otra jornada y ya salió.
         const enRutina = (rutina.dias ?? []).some(d =>
             (d.ejercicios ?? []).some(e => e.id === ej.ejercicioId));
-        const chipObj = def
-            ? `<span class="gym-chip">objetivo ${def.series}×${def.repsObjetivo}${def.pesoObjetivo ? ` @ ${pesoTexto(def.pesoObjetivo)}` : ""}</span>`
+        const chipObj = el("span", "gym-chip", def
+            ? `objetivo ${def.series}×${def.repsObjetivo}${def.pesoObjetivo ? ` @ ${pesoTexto(def.pesoObjetivo)}` : ""}`
             : ej.pista
-                ? `<span class="gym-chip">${esc(ej.pista)}</span>`
+                ? ej.pista
                 : enRutina
-                    ? `<span class="gym-chip">objetivo de otro día de la rutina</span>`
-                    : `<span class="gym-chip">sin objetivo fijo</span>`;
+                    ? "objetivo de otro día de la rutina"
+                    : "sin objetivo fijo");
         // Descanso: el elegido al añadir el ejercicio; si no, el del plan del día.
         // El chip es tocable: así se corrige sin tener que quitar y reañadir.
         const descSeg = (): number => Number(ej.descansoSeg) > 0 ? Number(ej.descansoSeg)
             : Number(def?.descansoSeg) > 0 ? Number(def?.descansoSeg) : 0;
-        const chipDesc = `<span class="gym-chip" data-desc style="cursor:pointer" title="Tocar para cambiar el descanso">` +
-            textoDescanso(descSeg()) + `</span> `;
-        cabE.innerHTML = `<div style="font-weight:700">${esc(ej.nombre || ej.ejercicioId)}</div>` +
-            `<div>${chipObj}${chipDesc}<span class="gym-chip" data-vol>–</span>` +
-            `<span class="gym-chip gym-sinreg" data-noreg hidden>⏳ sin registrar</span></div>`;
-        const bDesc = cabE.querySelector<HTMLElement>("[data-desc]");
-        if (bDesc) bDesc.onclick = async () => {
+        const chipDesc = el("span", "gym-chip gym-puntero", textoDescanso(descSeg()) + " ");
+        chipDesc.title = "Tocar para cambiar el descanso";
+        const chipVol = el("span", "gym-chip", "–");
+        const chipNoReg = el("span", "gym-chip gym-sinreg", "⏳ sin registrar");
+        chipNoReg.hidden = true;
+        const filaChips = el("div", null);
+        filaChips.append(chipObj, chipDesc, chipVol, chipNoReg);
+        cabE.append(
+            el("div", "gym-ej-nombre", ej.nombre || ej.ejercicioId),
+            filaChips,
+        );
+        chipDesc.onclick = async () => {
             const v = await pedirDescanso(descSeg());
             if (v == null) return;
             // Vacío o 0 = sin descanso propio: el chip vuelve a mirar el del plan
             ej.descansoSeg = v > 0 ? Math.round(v) : null;
             const n = ej.descansoSeg ?? (Number(def?.descansoSeg) > 0 ? Number(def?.descansoSeg) : 0);
-            bDesc.textContent = textoDescanso(n);
+            chipDesc.textContent = textoDescanso(n) + " ";
             marcarHecho();   // cambiar el descanso cuenta como tocar la sesión
         };
         box.appendChild(cabE);
-        volEls.set(ej, cabE.querySelector<HTMLElement>("[data-vol]"));   // volumen en vivo (misma idea que en la fila compacta)
+        volEls.set(ej, chipVol);   // volumen en vivo (misma idea que en la fila compacta)
         // El distintivo "sin registrar" se apaga en cuanto hay algo que cuente
-        const pintarEstado = (): void => {
-            const chip = cabE.querySelector<HTMLElement>("[data-noreg]");
-            if (chip) chip.hidden = !esSinRegistrar(ej);
-        };
+        const pintarEstado = (): void => { chipNoReg.hidden = !esSinRegistrar(ej); };
         const marcarHecho = (): void => { delete ej.sinRegistrar; pintarEstado(); };
         pintarEstado();   // refleja el estado inicial (puede venir sinRegistrar de la sesión guardada)
 
@@ -410,8 +415,7 @@ export function formularioSesion(
             ej.series.forEach((s, i) => {
                 const saltada = esSaltada(s);
                 const f = el("div", "gym-serie" + (saltada ? " saltada" : ""));
-                const cN = el("div", "opacity:.6;font-size:.8em;font-weight:700;", `${i + 1}`);
-                if (saltada) cN.style.textDecoration = "line-through";
+                const cN = el("div", "gym-serie-num" + (saltada ? " gym-tachado" : ""), `${i + 1}`);
                 f.appendChild(cN);
                 const r = el("input"); r.type = "number"; r.min = "0"; r.step = "1"; r.inputMode = "numeric";
                 r.placeholder = "reps"; r.value = String(s.reps ?? "");
@@ -457,9 +461,8 @@ export function formularioSesion(
     // mancuernas la siguiente). Cada variante es su propio ejercicio, con su
     // id y su historial aparte, y se guarda igual que los del plan.
     const botonAnadir = (): HTMLButtonElement => {
-        const b = el("button", "gym-btn", "＋ Añadir ejercicio");
+        const b = el("button", "gym-btn gym-btn-anadir", "＋ Añadir ejercicio");
         b.type = "button";
-        b.style.cssText = "width:100%;min-height:46px;margin-top:8px;";
         b.title = "Elige uno que ya hayas hecho o escribe uno nuevo: cada variante cuenta aparte";
         b.onclick = async () => {
             const r = await elegirEjercicio(rutina, { excluir: (datos.ejercicios ?? []).map(e => e.ejercicioId) });
@@ -723,8 +726,10 @@ export function formularioMedidas(medidas: LecturaNota<MedidasDatos>, pintar: Pi
     const pintaIMC = (): void => {
         // El IMC se calcula SIEMPRE en kg (peso guardado), no en la unidad mostrada
         const p = pesoAKg(inPeso.value), t = aNumero(inTalla.value) ?? (u.tallaCm ? Number(u.tallaCm) : null);
-        if (p && t) linea.innerHTML = `IMC resultante: <b>${decimal(p / Math.pow(t / 100, 2))}</b>`;
-        else linea.textContent = "";
+        if (p && t) {
+            linea.textContent = "IMC resultante: ";
+            linea.append(el("b", null, decimal(p / Math.pow(t / 100, 2))));
+        } else linea.textContent = "";
     };
     inPeso.oninput = pintaIMC;
     inTalla.oninput = pintaIMC;

@@ -45,7 +45,7 @@ export const leerIndice = async (): Promise<{ indice: Indice; error?: string }> 
         .map(f => ({
             id: String(f.id),
             nombre: String(f.nombre ?? "Sin nombre"),
-            estado: (["activa", "pausada", "finalizada"].includes(String(f.estado)) ? f.estado : "activa") as IndiceRutina["estado"],
+            estado: (["activa", "pausada", "finalizada"].includes(String(f.estado)) ? f.estado : "activa"),
             tipo: f.tipo === "libre" ? "libre" : "planificada",
             inicio: String(f.inicio ?? ""),
             fin: String(f.fin ?? ""),

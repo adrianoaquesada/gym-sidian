@@ -58,21 +58,26 @@ export const conAyuda = (e: HTMLElement, texto: () => string): void => {
             window.addEventListener("scroll", cerrarGlobo, { passive: true, capture: true });   // el scroll de la hoja no despega el globo: lo cierra
         }
     };
-    e.style.cursor = "help";
+    e.classList.add("gym-con-ayuda");   // cursor:help desde CSS
     e.addEventListener("pointerenter", (ev) => { if (ev.pointerType === "mouse") abrir(); });   // hover de escritorio
     e.addEventListener("pointerleave", cerrarGlobo);
     e.addEventListener("pointerdown", () => {                                                   // tap de móvil
         abrir();
-        setTimeout(() => document.addEventListener("pointerdown", cerrarGlobo, { once: true, capture: true }), 0);
+        window.setTimeout(() => document.addEventListener("pointerdown", cerrarGlobo, { once: true, capture: true }), 0);
     });
 };
 
 /* ── Cajas y tablas ─────────────────────────────────────────────────────── */
 
-export const KPI = (k: string, v: string, color: string, pie?: string): HTMLDivElement => {
+/* El pie admite texto (lo normal) o un elemento para casos compuestos,
+   p. ej. la barra de avance del KPI «Progreso» del dashboard. */
+export const KPI = (k: string, v: string, color: string, pie?: string | HTMLElement): HTMLDivElement => {
     const d = el("div", "gym-kpi");
     d.style.setProperty("--color", color);
-    d.innerHTML = `<div class="k">${k}</div><div class="v">${v}</div><div class="p">${pie ?? ""}</div>`;
+    const p = el("div", "p");
+    if (typeof pie === "string") p.textContent = pie;
+    else if (pie) p.appendChild(pie);
+    d.append(el("div", "k", k), el("div", "v", v), p);
     return d;
 };
 
@@ -80,8 +85,8 @@ export const caja = (raiz: HTMLElement, titulo: string, subtitulo?: string): HTM
     const c = el("div");
     c.style.cssText = `border:1px solid ${CONFIG.BORDE};border-radius:12px;padding:16px;margin:12px 0;line-height:1.45;`;
     raiz.appendChild(c);
-    const t = el("div", "font-weight:700;border-bottom:2px solid " + CONFIG.NARANJA + ";padding-bottom:5px;margin-bottom:12px;");
-    t.innerHTML = `<span style="color:${CONFIG.NARANJA}">${titulo}</span> <span style="font-weight:400;font-size:.82em;opacity:.7">${subtitulo ?? ""}</span>`;
+    const t = el("div", "gym-tit-caja");   // el título, con su borde naranja (CSS)
+    t.append(el("span", "gym-naranja", titulo), " ", el("span", "gym-sub", subtitulo ?? ""));
     c.appendChild(t);
     return c;
 };
@@ -97,14 +102,14 @@ export const cajaColapsable = (raiz: HTMLElement, titulo: string, subtitulo: str
     const nombreMin = nombre.charAt(0).toLowerCase() + nombre.slice(1);
     let abierta = false;
     try { abierta = localStorage.getItem(clave) === "1"; } catch { /* sin localStorage */ }
-    const etiqueta = el("div");
-    etiqueta.style.cssText = "min-width:0;";
-    etiqueta.innerHTML = `<span style="color:${CONFIG.NARANJA}">${titulo}</span> ` +
-        `<span style="font-weight:400;font-size:.82em;opacity:.7">${subtitulo}</span>`;
-    const bPliegue = el("button", "gym-btn", "");
+    const etiqueta = el("div", "gym-colaps-etq");
+    etiqueta.append(
+        el("span", "gym-naranja", titulo), " ",
+        el("span", "gym-sub", subtitulo),
+    );
+    const bPliegue = el("button", "gym-btn gym-colaps-btn", "");
     bPliegue.type = "button";
-    bPliegue.style.cssText = "min-height:34px;font-size:.85em;padding:4px 12px;white-space:nowrap;";
-    tTit.style.cssText += ";display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;";
+    // La fila de título (.gym-colaps-tit) ya trae el reparto en CSS
     tTit.replaceChildren(etiqueta, bPliegue);
     const pintarTit = () => {
         c2.classList.toggle("oculto", !abierta);
@@ -165,9 +170,9 @@ const opacaFondo = (th: HTMLTableCellElement): void => {
 export const limitaAlto = (wrap: HTMLElement, t: HTMLTableElement, n: number): void => {
     const cabeceras = t.tHead ? [...t.tHead.rows[0].cells] : [];
     const medir = () => {
-        cabeceras.forEach(c => opacaFondo(c as HTMLTableCellElement));
+        cabeceras.forEach(c => opacaFondo(c));
         const filas = [...(t.tBodies[0]?.rows ?? [])].slice(0, n);
-        if (!filas.length) { wrap.style.maxHeight = ""; return; }
+        if (!filas.length) { wrap.style.removeProperty("max-height"); return; }
         const cab = t.tHead ? t.tHead.offsetHeight : 0;
         const alto = cab + filas.reduce((s, f) => s + f.offsetHeight, 0);
         if (alto <= 0) return;
@@ -184,17 +189,28 @@ export const limitaAlto = (wrap: HTMLElement, t: HTMLTableElement, n: number): v
 // Tabla dentro de una sección, con las celdas ya en HTML.
 // Con {filasVisibles:n} la tabla deja de ser infinita: se limita a n filas en
 // pantalla y el resto se recorre con scroll dentro de su propia caja.
+// Tabla dentro de una sección. Las celdas son texto plano (nunca se
+// interpretan como HTML) o elementos ya construidos por quien llama.
+// Con {filasVisibles:n} la tabla deja de ser infinita: se limita a n filas en
+// pantalla y el resto se recorre con scroll dentro de su propia caja.
 export const tablaEn = (
-    raiz: HTMLElement, cabeceras: string[], filas: string[][],
+    raiz: HTMLElement, cabeceras: string[], filas: (string | HTMLElement)[][],
     { filasVisibles = 0 }: { filasVisibles?: number } = {},
 ): HTMLTableElement => {
     const t = document.createElement("table");
     t.className = "gym-tabla";
-    t.innerHTML = `<thead><tr>${cabeceras.map(h => `<th>${h}</th>`).join("")}</tr></thead>`;
+    const thead = el("thead");
+    const trh = el("tr");
+    for (const h of cabeceras) trh.append(el("th", null, h));
+    thead.appendChild(trh);
+    t.appendChild(thead);
     const tb = document.createElement("tbody");
     for (const f of filas) {
         const tr = document.createElement("tr");
-        tr.innerHTML = f.map(c => `<td>${c}</td>`).join("");
+        for (const c of f) {
+            if (typeof c === "string") tr.append(el("td", null, c));
+            else { const td = el("td"); td.appendChild(c); tr.append(td); }
+        }
         tb.appendChild(tr);
     }
     t.appendChild(tb);
@@ -221,10 +237,9 @@ export const toast = (txt: string, ok = true): void => {
         `z-index:9999;box-shadow:0 8px 28px rgba(0,0,0,.4);font-size:.9em;max-width:82vw;text-align:center;`, txt);
     d.className = "gym-toast";
     document.body.appendChild(d);
-    setTimeout(() => {
-        d.style.transition = "opacity .45s";
-        d.style.opacity = "0";
-        setTimeout(() => d.remove(), 500);
+    window.setTimeout(() => {
+        d.classList.add("gym-saliendo");   // opaca y desvanece (transición en CSS)
+        window.setTimeout(() => d.remove(), 500);
     }, 3600);
 };
 
@@ -301,9 +316,9 @@ export const modal = (titulo: string, subtitulo?: string, anidado = false): Moda
     overlay.id = anidado ? "gym-modal-anidado" : "gym-modal-activo";
     const cajaM = el("div", "gym-modal-caja");
     overlay.appendChild(cajaM);
-    const cab = el("div", "font-weight:700;margin-bottom:14px;border-bottom:2px solid " + CONFIG.NARANJA + ";padding-bottom:6px;");
-    cab.innerHTML = `<span style="color:${CONFIG.NARANJA}">${titulo}</span> ` +
-        (subtitulo ? `<span style="font-weight:400;font-size:.82em;opacity:.7">${subtitulo}</span>` : "");
+    const cab = el("div", "gym-tit-caja");
+    cab.append(el("span", "gym-naranja", titulo));
+    if (subtitulo) cab.append(" ", el("span", "gym-sub", subtitulo));
     cajaM.appendChild(cab);
     const cerrar = () => { overlay.remove(); document.removeEventListener("keydown", onKey); };
     const onKey = (e: KeyboardEvent) => {
@@ -324,14 +339,13 @@ export const modal = (titulo: string, subtitulo?: string, anidado = false): Moda
 // ✕ de cierre en la cabecera de un modal. Mismo estilo que la de la sesión
 // guiada: la clase .gym-cerrar-x es la única fuente de verdad de las dos.
 export const ponerX = (m: ModalUI, titulo = "Cerrar"): HTMLButtonElement => {
-    const contenido = el("div");
-    contenido.style.cssText = "flex:1;min-width:0;";
-    while (m.cab.firstChild) contenido.appendChild(m.cab.firstChild as ChildNode);
+    const contenido = el("div", "gym-flex1");   // flex:1;min-width:0 en CSS
+    while (m.cab.firstChild) contenido.appendChild(m.cab.firstChild);
     const bX = el("button", "gym-btn-g gym-cerrar-x", "✕");
     bX.type = "button";
     bX.title = titulo;
     bX.onclick = () => m.cerrar();
-    m.cab.style.cssText += ";display:flex;align-items:center;gap:8px;flex-wrap:wrap;";
+    m.cab.classList.add("gym-fila-cab");   // reparto en CSS
     m.cab.appendChild(contenido); m.cab.appendChild(bX);
     return bX;
 };
@@ -398,8 +412,7 @@ export const pedirTexto = (
 // invoca después del cambio para que quien lo monta repinte; aquí se repinta
 // a sí mismo.
 export const selectorUnidad = (alCambiar?: (u: UnidadPeso) => void): HTMLElement => {
-    const cont = el("div");
-    cont.style.cssText = "display:inline-flex;gap:6px;align-items:center;";
+    const cont = el("div", "gym-selector-um");   // display:inline-flex… en CSS
     const pintar = () => {
         cont.innerHTML = "";
         for (const u of UNIDADES_PESO) {

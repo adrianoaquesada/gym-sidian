@@ -17,7 +17,7 @@ import {
     listarPlantillas, leerPlantilla, plantillaDeRutina, plantillaExiste,
     rutaDatosDe, rutinaVacia, escribirPlantilla,
 } from "../datos";
-import { aNumero, esc, esFechaValida, hoy, limpiarNombre, slug, tsDe } from "../util";
+import { aNumero, esFechaValida, hoy, limpiarNombre, slug, tsDe } from "../util";
 import { pesoActual, pesoACampo, pesoAKg } from "../unidades";
 import type { DiaRutina, EjercicioDef, EstadoRutina, Rutina } from "../tipos";
 import { confirmar, el, selectorUnidad, toast } from "./componentes";
@@ -94,17 +94,21 @@ export const montar = async ({ cont, inicial, esEdicion, onGuardado, enHoja = fa
     {   // cabecera (la hoja superpuesta ya trae la suya)
         if (!enHoja) {
             const titulo = el("div", "font-weight:700;border-bottom:2px solid " + CONFIG.NARANJA + ";padding-bottom:6px;margin-bottom:14px;");
-            titulo.innerHTML = estado.modo === "editar"
-                ? `<span style="color:${CONFIG.NARANJA}">✏️ Editar rutina</span> <span style="font-weight:400;font-size:.8em;opacity:.7">las sesiones registradas se conservan</span>`
-                : `<span style="color:${CONFIG.NARANJA}">🏋️ Crear rutina</span> <span style="font-weight:400;font-size:.8em;opacity:.7">al guardar, esta pestaña pasa al dashboard de la rutina</span>`;
+            titulo.append(
+                el("span", "gym-naranja", estado.modo === "editar" ? "✏️ Editar rutina" : "🏋️ Crear rutina"),
+                " ",
+                el("span", "gym-subtitulo", estado.modo === "editar"
+                    ? "las sesiones registradas se conservan"
+                    : "al guardar, esta pestaña pasa al dashboard de la rutina"),
+            );
             raiz.appendChild(titulo);
         }
     }
 
-    const aviso = el("div", "gym-aviso");
+    const aviso = el("div", "gym-aviso gym-oculto");
     raiz.appendChild(aviso);
-    const error = (txt: string) => { aviso.textContent = "⚠️ " + txt; aviso.style.display = "block"; raiz.scrollIntoView({ block: "nearest" }); };
-    const limpiarError = () => { aviso.style.display = "none"; };
+    const error = (txt: string) => { aviso.textContent = "⚠️ " + txt; aviso.classList.remove("gym-oculto"); raiz.scrollIntoView({ block: "nearest" }); };
+    const limpiarError = () => { aviso.classList.add("gym-oculto"); };
 
     const campo = (etiqueta: string, control: HTMLElement, ayuda?: string): HTMLDivElement => {
         const f = el("div", "gym-campo");
@@ -327,9 +331,8 @@ export const montar = async ({ cont, inicial, esEdicion, onGuardado, enHoja = fa
     const repintar = (): void => {
         contDias.innerHTML = "";
         estado!.dias.forEach((dia, i) => contDias.appendChild(tarjetaDia(dia, i)));
-        const btnMas = el("button", "gym-chip", "＋ Añadir día");
+        const btnMas = el("button", "gym-chip gym-mt4", "＋ Añadir día");
         btnMas.type = "button";
-        btnMas.style.marginTop = "4px";
         btnMas.onclick = () => {
             const letra = String.fromCharCode(65 + estado!.dias.length);
             estado!.dias.push({ id: `dia-${slug(letra)}`, nombre: `Día ${letra}`, diasSemana: [], ejercicios: [] });
@@ -547,9 +550,12 @@ export const montar = async ({ cont, inicial, esEdicion, onGuardado, enHoja = fa
         return `rutina-${f}-${slug(estado!.nombre) || "sin-nombre"}`;
     };
     const actualizaRuta = () => {
-        rutaVista.innerHTML =
-            `<div style="color:var(--text-muted)">🗂 <b>${esc(rutaDatosDe(idPropuesto()))}</b></div>` +
-            `<div style="color:var(--text-muted);margin-top:4px">y su fila en <b>${esc(conf().rutaIndice)}</b></div>`;
+        rutaVista.empty();
+        const l1 = el("div", "gym-ruta-lin");
+        l1.append("🗂 ", el("b", null, rutaDatosDe(idPropuesto())));
+        const l2 = el("div", "gym-ruta-lin gym-mt4");
+        l2.append("y su fila en ", el("b", null, conf().rutaIndice));
+        rutaVista.append(l1, l2);
     };
     actualizaRuta();
 

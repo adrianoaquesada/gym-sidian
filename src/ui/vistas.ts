@@ -33,7 +33,7 @@ const navegar = async (type: string, estado: EstadoVista): Promise<void> => {
     const hoja = hojas[0] ?? ws.getLeaf("tab");
     for (const extra of hojas.slice(1)) extra.detach();
     await hoja.setViewState({ type, active: true, state: estado });
-    ws.revealLeaf(hoja);
+    void ws.revealLeaf(hoja);
 };
 
 /* La lista inicial (el índice) */
@@ -89,14 +89,14 @@ export const esMdRecienteDelPlugin = (ruta: string): boolean => {
 export const abrirArchivoComoPlugin = async (leaf: WorkspaceLeaf, ruta: string): Promise<boolean> => {
     if (ruta === conf().rutaIndice) {
         await leaf.setViewState({ type: VISTA_LISTA, active: true, state: {} });
-        aplicacion().workspace.revealLeaf(leaf);
+        void aplicacion().workspace.revealLeaf(leaf);
         return true;
     }
     if (ruta.startsWith(conf().carpetaDatos + "/") && ruta.endsWith(".md")) {
         const id = ruta.slice(ruta.lastIndexOf("/") + 1, -3);
         if (!id) return false;
         await leaf.setViewState({ type: VISTA_RUTINA, active: true, state: { rutinaId: id } });
-        aplicacion().workspace.revealLeaf(leaf);
+        void aplicacion().workspace.revealLeaf(leaf);
         return true;
     }
     return false;

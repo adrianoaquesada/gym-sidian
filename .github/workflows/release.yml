@@ -1,6 +1,6 @@
 name: Release
 
-# Al etiquetar (p. ej. `git tag 1.0.0 && git push origin 1.0.0`) compila el
+# Al etiquetar (p. ej. `git tag 1.0.1 && git push origin 1.0.1`) compila el
 # plugin y crea la release de GitHub con los tres archivos que Obsidian
 # descarga: main.js, manifest.json y styles.css.
 # IMPORTANTE: el tag debe ser EXACTAMENTE la versión de manifest.json y SIN
@@ -16,6 +16,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write   # crear la release y subir sus archivos (el token por defecto es de solo lectura)
+      id-token: write       # necesario para atestar la procedencia de la build
+      attestations: write   # idem (publica la atestación en el repositorio)
     steps:
       - uses: actions/checkout@v4
 
@@ -35,6 +37,14 @@ jobs:
 
       - name: Compilar (typecheck + bundle)
         run: npm ci && npm run build
+
+      - name: Atestar la procedencia de la build
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            main.js
+            manifest.json
+            styles.css
 
       - name: Crear la release con los 3 archivos
         uses: softprops/action-gh-release@v2

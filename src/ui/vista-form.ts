@@ -6,7 +6,7 @@
    al dashboard de la rutina (no se abre ninguna pestaña nueva).
    ═══════════════════════════════════════════════════════════════════════════ */
 
-import { ItemView, type WorkspaceLeaf } from "obsidian";
+import { ItemView, type ViewStateResult, type WorkspaceLeaf } from "obsidian";
 import { leerRutina } from "../datos";
 import type { Rutina } from "../tipos";
 import { crear, editar } from "./creador";
@@ -26,10 +26,10 @@ export class VistaForm extends ItemView {
 
     getState(): EstadoForm { return { modo: this.modo, rutinaId: this.rutinaId }; }
 
-    async setState(state: EstadoForm, result: unknown): Promise<void> {
+    async setState(state: EstadoForm, result: ViewStateResult): Promise<void> {
         this.modo = state?.modo === "editar" ? "editar" : "crear";
         this.rutinaId = state?.rutinaId ?? null;
-        await super.setState(state as never, result as never);
+        await super.setState(state, result);
         await this.pintar();
     }
 

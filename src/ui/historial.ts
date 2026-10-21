@@ -9,7 +9,7 @@
 import {
     diaPorId, ejerciciosConDatos, esSaltada, nombreDia, volumenEjercicio,
 } from "../datos";
-import { esc, esFechaValida, fechaLegible, hoy } from "../util";
+import { esFechaValida, fechaLegible, hoy } from "../util";
 import { pesoTexto } from "../unidades";
 import type { Rutina } from "../tipos";
 import { cajaColapsable, el, tablaEn } from "./componentes";
@@ -101,7 +101,7 @@ export function seccionHistorial(c: HTMLElement, rutina: Rutina): void {
                     fecha: s.fecha,
                     dia: nombreDia(rutina, s.diaId),
                     ejercicio: e.nombre || def?.nombre || e.ejercicioId,
-                    // Ojo: esta columna pasa por esc() al pintarse, así que aquí solo texto plano
+                    // La tabla pinta las celdas como texto plano, así que aquí solo texto
                     series: (e.series ?? []).map(x => esSaltada(x)
                         ? "⏭ saltada"
                         : `${x.reps ?? "–"}×${pesoTexto(x.peso)}`).join(" · ") || "–",
@@ -121,7 +121,7 @@ export function seccionHistorial(c: HTMLElement, rutina: Rutina): void {
         const total = filas.length;
         tablaEn(contTabla, ["Fecha", "Día", "Ejercicio", "Series (reps × peso)", "Volumen", "Notas"],
             filas.slice(0, 200).map(f => [
-                fechaLegible(f.fecha), esc(f.dia), `<b>${esc(f.ejercicio)}</b>`, esc(f.series), pesoTexto(f.volumen), esc(f.notas),
+                fechaLegible(f.fecha), f.dia, el("b", null, f.ejercicio), f.series, pesoTexto(f.volumen), f.notas,
             ]), { filasVisibles: 10 });
         if (total > 200) contTabla.appendChild(el("div", "opacity:.7;font-size:.8em;margin-top:6px;",
             `Se muestran las 200 más recientes de ${total}: afina los filtros para ver el resto.`));

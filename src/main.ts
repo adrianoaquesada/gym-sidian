@@ -17,7 +17,7 @@
 
 import { MarkdownView, Plugin, type WorkspaceLeaf } from "obsidian";
 import { normalizarAjustes, type AjustesGym } from "./ajustes";
-import { iniciarEstado, actualizarAjustes, conf } from "./estado";
+import { iniciarEstado, actualizarAjustes } from "./estado";
 import { limpiarOverlays, toast } from "./ui/componentes";
 import { GymStoneTab } from "./ui/tabla-ajustes";
 import { VistaLista } from "./ui/vista-lista";

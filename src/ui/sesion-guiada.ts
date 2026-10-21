@@ -13,7 +13,7 @@ import {
     descansoDe, diaPorId, diaProgramado, esLibre, esSaltada, esSinRegistrar,
     escribirRutina, seriesHechas, ultimosValores,
 } from "../datos";
-import type { DiaRutina, EjercicioDef, EjercicioSesion, Rutina, SerieSesion, Sesion } from "../tipos";
+import type { EjercicioDef, EjercicioSesion, Rutina, SerieSesion, Sesion } from "../tipos";
 import { pesoACampo, pesoAKg, pesoTexto } from "../unidades";
 import { aNumero, dos, esc, fechaLegible, hoy } from "../util";
 import { btn, confirmar, el, modal, pedirTexto, toast } from "./componentes";
@@ -204,16 +204,17 @@ export async function modoSesion(rutina: Rutina, diaId: string | null, pintar: P
 
     const cab = el("div", "gym-modo-cab");
     const titCab = el("div", "flex:1;min-width:0;");
-    titCab.innerHTML = `<b style="color:${CONFIG.NARANJA}">🎯 ${esc(dia.nombre)}</b>` +
-        `<div style="font-size:.75em;opacity:.65">${fechaLegible(hoy())}</div>`;
+    titCab.append(
+        el("b", "gym-naranja", `🎯 ${dia.nombre}`),
+        el("div", "gym-modo-fecha", fechaLegible(hoy())),
+    );
     // El reloj lleva el mismo cuerpo que los botones de al lado (54 px, mismo estilo)
     const relojEl = el("span", "gym-btn-g");
     relojEl.style.cssText = "min-height:54px;padding:0 14px;display:inline-flex;align-items:center;" +
         "font-size:1.2em;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap;cursor:default;";
-    const btnPausa = el("button", "gym-btn-g", "⏸ Pausa"); btnPausa.type = "button";
-    btnPausa.style.cssText = "font-size:.95em;padding:8px 12px;white-space:nowrap;"; btnPausa.title = "Pausa: congela el cronómetro y el descanso";
-    const btnCerrar = el("button", "gym-btn-g gym-cerrar-x", "✕"); btnCerrar.type = "button";
-    btnCerrar.style.setProperty("--x", "54px");   // cuadrada, a la altura del botón Pausa de al lado
+    const btnPausa = el("button", "gym-btn-g gym-btn-pausa", "⏸ Pausa"); btnPausa.type = "button";
+    btnPausa.title = "Pausa: congela el cronómetro y el descanso";
+    const btnCerrar = el("button", "gym-btn-g gym-cerrar-x gym-x54", "✕"); btnCerrar.type = "button";
     btnCerrar.title = "Salir sin guardar";
     cab.appendChild(titCab); cab.appendChild(relojEl);
     cab.appendChild(btnCerrar);
@@ -394,7 +395,7 @@ export async function modoSesion(rutina: Rutina, diaId: string | null, pintar: P
                 "Aquí no hay plan previo: elige o escribe lo que vas a hacer y registra cada serie " +
                 "con sus repeticiones y su peso. Puedes alternar variantes de un día para otro."));
             const bAnadir0 = anadirEjercicioBoton();
-            bAnadir0.style.cssText = "width:100%;min-height:64px;font-size:1.05em;margin-top:16px;";
+            bAnadir0.classList.add("gym-btn-anadir0");   // ancho/alto completo (CSS)
             contEj.appendChild(bAnadir0);
             barraAccion.replaceChildren();
             bVolver.disabled = true;
@@ -481,8 +482,10 @@ export async function modoSesion(rutina: Rutina, diaId: string | null, pintar: P
             const esExtra = i >= ej.planOrigen;   // serie fuera del plan: se marca y se puede retirar
             const fila = el("div", "gym-modo-set" + (saltada ? " saltada" : registrada ? " hecha" : esActual ? " actual" : "") + (esExtra ? " extra" : ""));
             const cN = el("div", "n");
-            if (esExtra) { cN.innerHTML = `${i + 1}<span class="ext">extra</span>`; fila.title = "Serie extra — fuera del plan"; }
-            else cN.textContent = String(i + 1);
+            if (esExtra) {
+                cN.append(String(i + 1), el("span", "ext", "extra"));
+                fila.title = "Serie extra — fuera del plan";
+            } else cN.textContent = String(i + 1);
             fila.appendChild(cN);
             if (saltada) {
                 fila.appendChild(el("div", "font-size:.92em;font-style:italic;", "⏭ Saltada"));
@@ -535,16 +538,14 @@ export async function modoSesion(rutina: Rutina, diaId: string | null, pintar: P
             }
             contEj.appendChild(fila);
         }
-        const bMasSerie = el("button", "gym-btn-g", "＋1 serie"); bMasSerie.type = "button";
-        bMasSerie.style.cssText = "min-height:44px;font-size:.88em;";
+        const bMasSerie = el("button", "gym-btn-g gym-btn-mini-g", "＋1 serie"); bMasSerie.type = "button";
         bMasSerie.title = "Añadir una serie extra a este ejercicio";
         bMasSerie.onclick = () => { ej.plan++; pintarEjercicio(); };
         const filaExtras = el("div", "display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:6px;");
         filaExtras.appendChild(bMasSerie);
         filaExtras.appendChild(anadirEjercicioBoton());   // añadir otro mientras se entrena
         if (ej.plan > ej.planOrigen) {   // hay series extra: se pueden retirar (si alguna ya está completada, primero su ↩)
-            const bQuitar = el("button", "gym-btn-g", "↩ Quitar serie extra"); bQuitar.type = "button";
-            bQuitar.style.cssText = "min-height:44px;font-size:.88em;";
+            const bQuitar = el("button", "gym-btn-g gym-btn-mini-g", "↩ Quitar serie extra"); bQuitar.type = "button";
             const minPlan = Math.max(ej.planOrigen, ej.series.length);
             bQuitar.disabled = ej.plan <= minPlan;
             bQuitar.title = bQuitar.disabled ? "Hay series extra completadas: deshácelas antes con ↩ en su fila" : "Retirar la última serie extra añadida";
@@ -570,8 +571,7 @@ export async function modoSesion(rutina: Rutina, diaId: string | null, pintar: P
         }
         else if (enDescanso && descanso!.ej === idx) { texto = "⏭ Siguiente ejercicio"; accion = () => siguiente(); clase = "verde"; }
         else if (!pendientes) { texto = idx + 1 >= defs.length ? "🏁 Terminar" : "⏭ Siguiente ejercicio"; accion = () => siguiente(); clase = "verde"; }
-        btnAccion = el("button", "gym-btn-g " + clase, texto); btnAccion.type = "button";
-        btnAccion.style.cssText = "flex:1 1 auto;min-height:60px;font-size:1.02em;";
+        btnAccion = el("button", "gym-btn-g gym-btn-accion " + clase, texto); btnAccion.type = "button";
         if (accion) btnAccion.onclick = accion; else btnAccion.disabled = true;
         barraAccion.replaceChildren();   // la acción vive fija abajo, encima del pie
         if (!enDescanso && iniciada && !pausado) barraAccion.appendChild(btnPausa);   // durante el descanso vive en la fila del temporizador; antes de iniciar no hay nada que pausar; en pausa solo está el botón rojo
@@ -630,19 +630,19 @@ export async function modoSesion(rutina: Rutina, diaId: string | null, pintar: P
         if (animando || n === idx || n < 0 || n >= defs.length) return;
         animando = true;
         const dir = n > idx ? -1 : 1;   // al siguiente: el contenido se va a la izquierda
-        const trans = "transform .18s ease, opacity .18s ease";
-        contEj.style.transition = trans;
-        contEj.style.transform = `translateX(${dir * 100}%)`;
-        contEj.style.opacity = "0";
+        // Los estados de la animación son clases (gym-slide* en styles.css):
+        // salida con transición → salto instantáneo al lado contrario → entrada.
+        const salida = dir < 0 ? "gym-slide-izq" : "gym-slide-der";
+        const entrada = dir < 0 ? "gym-slide-der" : "gym-slide-izq";
+        contEj.classList.add("gym-slide", salida, "gym-slide-fuera");
         window.setTimeout(() => {
-            irAEjercicio(n);   // repinta el contenido (los estilos en línea se quedan)
-            contEj.style.transition = "none";
-            contEj.style.transform = `translateX(${-dir * 100}%)`;
+            irAEjercicio(n);   // repinta el contenido (las clases del contenedor se quedan)
+            contEj.classList.add("gym-slide-sin");   // sin transición: salto al otro lado
+            contEj.classList.remove(salida);
+            contEj.classList.add(entrada);
             void contEj.offsetWidth;   // reflow: sin él, la transición de entrada no se dispara
-            contEj.style.transition = trans;
-            contEj.style.transform = "";
-            contEj.style.opacity = "1";
-            window.setTimeout(() => { contEj.style.transition = ""; animando = false; }, 220);
+            contEj.classList.remove("gym-slide-sin", entrada, "gym-slide-fuera");
+            window.setTimeout(() => { contEj.classList.remove("gym-slide"); animando = false; }, 220);
         }, 190);
     };
     cuerpo.addEventListener("pointerdown", e => {
@@ -685,7 +685,7 @@ export async function modoSesion(rutina: Rutina, diaId: string | null, pintar: P
     };
 
     const cerrar = () => {
-        clearInterval(idReloj);
+        window.clearInterval(idReloj);
         document.removeEventListener("keydown", onKey);
         overlay.remove();
     };
@@ -847,7 +847,7 @@ export async function modoSesion(rutina: Rutina, diaId: string | null, pintar: P
     };
 
     // ── Reloj (cada 250 ms: tiempo de sesión activa y cuenta atrás del descanso) ──
-    const idReloj = setInterval(() => {
+    const idReloj = window.setInterval(() => {
         relojEl.textContent = `⏱ ${relojTexto(transcurridoMs())}`;   // en pausa se congela: el reloj mide tiempo activo
         if (pausado) return;   // la pausa sí congela la cuenta atrás del descanso
         if (descanso && descanso.restanteMs > 0) {

@@ -17,7 +17,7 @@ import {
     programados, seriesHechas, sesionesEn, totalSaltadas, totalSeries,
     volumenEjercicio, volumenSesion,
 } from "../datos";
-import { decimal, diaSemana, dos, esc, esFechaValida, fechaLegible, hoy,
+import { decimal, diaSemana, dos, esFechaValida, fechaLegible, hoy,
     nombreMes, sumarDias, tsAhora, tsDe } from "../util";
 import { pesoTexto } from "../unidades";
 import type { DiaRutina, Rutina, Sesion } from "../tipos";
@@ -75,8 +75,7 @@ export function seccionCalendario(c: HTMLElement, rutina: Rutina, pintar: Pintar
     }
     nav.appendChild(btnAnt); nav.appendChild(etiqueta); nav.appendChild(btnSig); nav.appendChild(selector);
 
-    const cajaMes = el("div");
-    cajaMes.style.marginBottom = "6px";
+    const cajaMes = el("div", "margin-bottom:6px;");   // cssText vía el(): permitido
     c.appendChild(cajaMes);
 
     const pintarMes = (): void => {
@@ -105,17 +104,27 @@ export function seccionCalendario(c: HTMLElement, rutina: Rutina, pintar: Pintar
 
         // Resumen del mes
         const resumen = el("div", "display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:.85em;margin-bottom:10px;");
-        const cabeceraMes = `<span style="color:${CONFIG.NARANJA};font-weight:600;flex-shrink:0">` +
-            `${sesionesMes.length} ${sesionesMes.length === 1 ? "sesión" : "sesiones"}</span>`;
-        resumen.innerHTML = esLibre(rutina)
-            ? cabeceraMes +
-              `<span style="opacity:.8;min-width:0;">· <span style="color:${CONFIG.VERDE};font-weight:600">${diasMes}</span> ` +
-              `${diasMes === 1 ? "día entrenado" : "días entrenados"} · <b>${pesoTexto(volumenMes)}</b> de volumen</span>`
-            : cabeceraMes +
-              `<span style="flex:1 1 120px;min-width:110px;height:9px;border-radius:6px;overflow:hidden;background:var(--background-secondary);display:flex">` +
-              `<span style="width:${Math.max(0, Math.min(100, pctMes || 0)).toFixed(1)}%;background:${CONFIG.VERDE}"></span></span>` +
-              `<span style="opacity:.8;min-width:0;"><span style="color:${CONFIG.VERDE}">${hechas}</span>/${progMes.length} programadas` +
-              `${Number.isFinite(pctMes) ? ` · ${decimal(pctMes)} %` : ""} · <b>${pesoTexto(volumenMes)}</b> de volumen</span>`;
+        const cabeceraMes = el("span", "gym-res-sesiones",
+            `${sesionesMes.length} ${sesionesMes.length === 1 ? "sesión" : "sesiones"}`);
+        resumen.appendChild(cabeceraMes);
+        if (esLibre(rutina)) {
+            const det = el("span", "gym-res-det");
+            det.append("· ", el("span", "gym-verde", String(diasMes)),
+                ` ${diasMes === 1 ? "día entrenado" : "días entrenados"} · `,
+                el("b", null, pesoTexto(volumenMes)), " de volumen");
+            resumen.appendChild(det);
+        } else {
+            const barra = el("span", "gym-barra-mes");
+            const relleno = el("span", "gym-barra-mes-fill");
+            relleno.style.width = `${Math.max(0, Math.min(100, pctMes || 0)).toFixed(1)}%`;
+            barra.appendChild(relleno);
+            resumen.appendChild(barra);
+            const det = el("span", "gym-res-det");
+            det.append(el("span", "gym-verde", String(hechas)), `/${progMes.length} programadas`);
+            if (Number.isFinite(pctMes)) det.append(` · ${decimal(pctMes)} %`);
+            det.append(" · ", el("b", null, pesoTexto(volumenMes)), " de volumen");
+            resumen.appendChild(det);
+        }
         cajaMes.appendChild(resumen);
 
         // Cabecera de la semana (empieza en lunes, como en trading)
@@ -152,10 +161,11 @@ export function seccionCalendario(c: HTMLElement, rutina: Rutina, pintar: Pintar
 
         // Leyenda
         const ley = el("div", "font-size:.78em;opacity:.72;margin-top:8px;");
-        ley.innerHTML =
-            `<span style="color:${CONFIG.VERDE};font-weight:700">■</span> completado &nbsp; ` +
-            `<span style="color:${CONFIG.NARANJA}">▨</span> programado &nbsp; ` +
-            `<span style="color:${CONFIG.ROJO}">▨</span> omitido`;
+        ley.append(
+            el("span", "gym-verde", "■"), " completado   ",
+            el("span", "gym-naranja", "▨"), " programado   ",
+            el("span", "gym-rojo", "▨"), " omitido",
+        );
         cajaMes.appendChild(ley);
 
         // Resumen semanal del mes (como el pie del calendario de trading)
@@ -188,9 +198,9 @@ const celdaCalendario = ({ clave, numero, fuera, progPorFecha, porDia, rutina, p
     const anotaciones = (rutina.notasDia ?? []).filter(n => n.fecha === clave);
     const volumen = sesiones.reduce((t, s) => t + volumenSesion(s), 0);
 
-    let fondo = "transparent", borde = "transparent", colorTitulo = "var(--text-normal)";
+    let fondo = "transparent", borde = "transparent";
     if (sesiones.length) { fondo = "color-mix(in srgb, " + CONFIG.VERDE + "% 14%, transparent)"; borde = CONFIG.VERDE; }
-    else if (diaProg && pasado) { fondo = "color-mix(in srgb, " + CONFIG.ROJO + "% 12%, transparent)"; borde = CONFIG.ROJO; colorTitulo = "var(--text-muted)"; }
+    else if (diaProg && pasado) { fondo = "color-mix(in srgb, " + CONFIG.ROJO + "% 12%, transparent)"; borde = CONFIG.ROJO; }
     else if (diaProg) { borde = CONFIG.NARANJA; }
     else if (anotaciones.length) { fondo = "var(--background-secondary)"; }
 
@@ -200,8 +210,8 @@ const celdaCalendario = ({ clave, numero, fuera, progPorFecha, porDia, rutina, p
     cel.style.background = !esHoy ? fondo
         : fondo === "transparent" ? tinteHoy : `${fondo}, ${tinteHoy}`;
     cel.style.borderColor = borde;
-    if (fuera) cel.style.opacity = "0.3";
-    if (diaProg && !sesiones.length) cel.style.borderStyle = "dashed";
+    if (fuera) cel.classList.add("fuera");                          // colas del mes (CSS)
+    if (diaProg && !sesiones.length) cel.classList.add("sin-hacer"); // programado y sin registrar (CSS)
 
     cel.appendChild(el("div", "n", String(numero)));
     if (diaProg) {
@@ -261,29 +271,38 @@ const tablaSemanas = (
     const tabla = document.createElement("table");
     tabla.className = "gym-tabla";
     // La columna «Adherencia» solo tiene sentido con días programados
-    tabla.innerHTML = libre
-        ? "<thead><tr><th>Semana</th><th>Sesiones</th><th>Días</th><th>Volumen</th><th>Minutos</th></tr></thead>"
-        : "<thead><tr><th>Semana</th><th>Hechas</th><th>Volumen</th><th>Minutos</th><th>Adherencia</th></tr></thead>";
+    const thead = document.createElement("thead");
+    const trH = document.createElement("tr");
+    for (const h of libre
+        ? ["Semana", "Sesiones", "Días", "Volumen", "Minutos"]
+        : ["Semana", "Hechas", "Volumen", "Minutos", "Adherencia"]) {
+        trH.appendChild(el("th", null, h));
+    }
+    thead.appendChild(trH);
+    tabla.appendChild(thead);
     const tb = document.createElement("tbody");
+    const celda = (txt: string, cls?: string): HTMLTableCellElement => {
+        const td = document.createElement("td");
+        if (cls) td.className = cls;
+        td.textContent = txt;
+        return td;
+    };
     for (const w of [...semanas.values()].sort((a, b) => (a.desde < b.desde ? -1 : 1))) {
         const tr = document.createElement("tr");
-        const celda = (txt: string, extra?: string) => `<td${extra || ""}>${txt}</td>`;
-        const celdas = [
-            celda(`${w.desde.slice(8)}/${w.desde.slice(5, 7)} → ${w.hasta.slice(8)}/${w.hasta.slice(5, 7)}`),
-            // En la libre solo hay sesiones contadas; en la planificada, hechas/programadas
-            celda(libre ? String(w.hechas) : `${w.hechas}/${w.prog || "–"}`),
-        ];
+        tr.appendChild(celda(`${w.desde.slice(8)}/${w.desde.slice(5, 7)} → ${w.hasta.slice(8)}/${w.hasta.slice(5, 7)}`));
+        // En la libre solo hay sesiones contadas; en la planificada, hechas/programadas
+        tr.appendChild(celda(libre ? String(w.hechas) : `${w.hechas}/${w.prog || "–"}`));
         // La tercera columna es «Días» en la libre y «Volumen» en la planificada
-        if (libre) celdas.push(celda(String(w.dias.size || "–")));
-        celdas.push(celda(pesoTexto(w.vol)), celda(String(w.min || "–")));
+        if (libre) tr.appendChild(celda(String(w.dias.size || "–")));
+        tr.append(celda(pesoTexto(w.vol)), celda(String(w.min || "–")));
         if (!libre) {
             const pctSem = w.prog ? (w.hechas / w.prog) * 100 : NaN;
-            const color = !Number.isFinite(pctSem) ? "inherit"
-                : pctSem >= 80 ? CONFIG.VERDE : pctSem >= 50 ? CONFIG.NARANJA : CONFIG.ROJO;
-            celdas.push(celda(Number.isFinite(pctSem) ? decimal(pctSem) + " %" : "–",
-                ` style="color:${color};font-weight:600"`));
+            const tdAdh = celda(Number.isFinite(pctSem) ? decimal(pctSem) + " %" : "–", "gym-pct");
+            if (Number.isFinite(pctSem)) {
+                tdAdh.style.color = pctSem >= 80 ? CONFIG.VERDE : pctSem >= 50 ? CONFIG.NARANJA : CONFIG.ROJO;
+            }
+            tr.appendChild(tdAdh);
         }
-        tr.innerHTML = celdas.join("");
         tb.appendChild(tr);
     }
     tabla.appendChild(tb);
@@ -540,11 +559,17 @@ export function detalleDia(rutina: Rutina, fecha: string, pintar: Pintar): void 
             const box = el("div", "gym-ej-reg");
             const cab = el("div", "gym-ej-reg-cab");
             const nSaltadas = totalSaltadas(s);
-            cab.innerHTML = `<div style="font-weight:700">🏋️ ${esc(nombreDia(rutina, s.diaId))}` +
-                ` <span class="gym-chip">${Number(s.duracionMin) || 0} min</span>` +
-                ` <span class="gym-chip">${pesoTexto(volumenSesion(s))}</span>` +
-                ` <span class="gym-chip">${totalSeries(s)} series</span>` +
-                (nSaltadas ? ` <span class="gym-chip" title="Series planificadas que no se hicieron">⏭ ${nSaltadas} saltada${nSaltadas > 1 ? "s" : ""}</span>` : "") + `</div>`;
+            const tit = el("div", "gym-ej-nombre");
+            tit.append(`🏋️ ${nombreDia(rutina, s.diaId)} `,
+                el("span", "gym-chip", `${Number(s.duracionMin) || 0} min`),
+                el("span", "gym-chip", pesoTexto(volumenSesion(s))),
+                el("span", "gym-chip", `${totalSeries(s)} series`));
+            if (nSaltadas) {
+                const chipSal = el("span", "gym-chip",
+                    `⏭ ${nSaltadas} saltada${nSaltadas > 1 ? "s" : ""}`);
+                chipSal.title = "Series planificadas que no se hicieron";
+                tit.appendChild(chipSal);
+            }
             const acciones = el("div", "display:flex;gap:6px;");
             acciones.appendChild(btn("✏️ Editar", "gym-mini", () => { m.cerrar(); formularioSesion(rutina, { fecha, sesion: s }, pintar); }));
             acciones.appendChild(btn("🗑 Borrar", "gym-mini peligro", async () => {
@@ -564,7 +589,7 @@ export function detalleDia(rutina: Rutina, fecha: string, pintar: Pintar): void 
                     toast("⚠️ No pude borrar la sesión: " + (e?.message ?? e), false);
                 }
             }));
-            cab.appendChild(acciones);
+            cab.append(tit, acciones);
             box.appendChild(cab);
 
             const lt = lineaTiempo(s);   // 🕒 con «t» (guiada): se ve toda la sesión en su eje
@@ -577,33 +602,42 @@ export function detalleDia(rutina: Rutina, fecha: string, pintar: Pintar): void 
             for (const e of s.ejercicios ?? []) {
                 const sinReg = esSinRegistrar(e);
                 const celdas = (e.series ?? []).map(x => esSaltada(x)
-                    ? `<span class="gym-saltada">⏭ saltada</span>`
+                    ? el("span", "gym-saltada", "⏭ saltada")
                     : `${x.reps ?? "–"}×${pesoTexto(x.peso)}`);
                 const nHechas = seriesHechas(e).length;
                 const nSaltadas = (e.series ?? []).length - nHechas;
                 // ⏱ Tiempos (sesión guiada): a qué hora pasó cada serie y el
                 // tiempo entre una y otra (con ritmo de ese ejercicio)
                 const conT = seriesHechas(e).filter(x => x.t != null).map(x => x.t as number);
-                let lineaT = "";
+                let lineaT: HTMLDivElement | null = null;
                 if (conT.length >= 2) {
                     const tramos = conT.slice(1).map((t, i) => t - conT[i]);
                     const dur = conT[conT.length - 1] - conT[0];
                     const repsEj = seriesHechas(e).reduce((a, x) => a + (Number(x.reps) || 0), 0);
-                    const rpmEj = dur > 0 && repsEj > 0 ? ` · <b>${(repsEj / (dur / 60000)).toFixed(1)}</b> reps/min` : "";
-                    lineaT = `<div style="font-size:.74em;opacity:.7;margin-top:4px;">⏱ ${conT.map(relojMs).join(" · ")}` +
-                        ` <span style="opacity:.85">— entre: ${tramos.map(relojMs).join(" · ")}` +
-                        ` · media ${relojMs(tramos.reduce((a, b) => a + b, 0) / tramos.length)}${rpmEj}</span></div>`;
+                    const rpmEj = dur > 0 && repsEj > 0
+                        ? repsEj / (dur / 60000)
+                        : null;
+                    lineaT = el("div", "gym-td-tiempos");
+                    lineaT.append(`⏱ ${conT.map(relojMs).join(" · ")}`);
+                    const entre = el("span", "gym-td-tiempos-entre",
+                        `— entre: ${tramos.map(relojMs).join(" · ")}` +
+                        ` · media ${relojMs(tramos.reduce((a, b) => a + b, 0) / tramos.length)}`);
+                    if (rpmEj != null) entre.append(` · `, el("b", null, rpmEj.toFixed(1)), " reps/min");
+                    lineaT.append(" ", entre);
                 }
                 const tr = document.createElement("tr");
-                tr.innerHTML = `<td style="font-weight:600">${esc(e.nombre || e.ejercicioId || "–")}` +
-                    (sinReg
-                        ? `<div class="gym-sinreg" style="font-size:.78em">⏳ sin registrar</div>`
-                        : nSaltadas
-                            ? `<div style="font-weight:400;font-size:.78em;opacity:.6;">${nHechas} de ${(e.series ?? []).length} hechas</div>`
-                            : "") + `</td>` +
-                    `<td>${celdas.join(" · ") || "–"}${lineaT}</td>` +
-                    `<td style="white-space:nowrap">${pesoTexto(volumenEjercicio(e))}</td>` +
-                    `<td style="opacity:.75">${esc(e.notas ?? "")}</td>`;
+                const tdNom = el("td", "gym-td-nom", e.nombre || e.ejercicioId || "–");
+                if (sinReg) tdNom.appendChild(el("div", "gym-sinreg gym-td-sub", "⏳ sin registrar"));
+                else if (nSaltadas) tdNom.appendChild(el("div", "gym-td-sub",
+                    `${nHechas} de ${(e.series ?? []).length} hechas`));
+                const tdSeries = document.createElement("td");
+                if (celdas.length) {
+                    celdas.forEach((c, i) => { if (i) tdSeries.append(" · "); tdSeries.append(c); });
+                } else tdSeries.append("–");
+                if (lineaT) tdSeries.appendChild(lineaT);
+                const tdVol = el("td", "gym-nowrap", pesoTexto(volumenEjercicio(e)));
+                const tdNotas = el("td", "gym-td-notas", e.notas ?? "");
+                tr.append(tdNom, tdSeries, tdVol, tdNotas);
                 tb.appendChild(tr);
             }
             tabla.appendChild(tb);

@@ -9,7 +9,7 @@ import { catalogoGestion, renombrarEjercicio, type EjercicioGestion } from "../d
 import { cargarGrupos, fijarGrupo, gruposEnMemoria, purgarGruposSinUsar } from "../datos/grupos";
 import type { EjercicioCatalogo, Rutina } from "../tipos";
 import { pesoTexto } from "../unidades";
-import { aNumero, esc, fechaLegible, limpiarNombre, norm } from "../util";
+import { aNumero, fechaLegible, limpiarNombre, norm } from "../util";
 import { confirmar, modal, pedirTexto, ponerX, toast, el } from "./componentes";
 
 /* Traduce un nombre escrito a mano a un { id, nombre } ESTABLE.
@@ -56,9 +56,8 @@ export const controlDescanso = (
     raiz.appendChild(inDesc);
     const chips = el("div", "display:flex;gap:6px;flex-wrap:wrap;");
     for (const seg of [60, 90, 120, 180, 300]) {
-        const b = el("button", "gym-btn", `${seg} s`);
+        const b = el("button", "gym-btn gym-chip-desc", `${seg} s`);
         b.type = "button";
-        b.style.cssText = "min-height:38px;padding:6px 11px;font-size:.85em;";
         b.onclick = () => { inDesc.value = String(seg); tocar(); };
         chips.appendChild(b);
     }
@@ -102,9 +101,8 @@ export const pedirDescanso = (segActual: number | null): Promise<number | null> 
 
     const ctrl = controlDescanso(segActual);
     m.caja.appendChild(ctrl.raiz);
-    const ok = el("button", "gym-btn primario", "✔ Usar este descanso");
+    const ok = el("button", "gym-btn primario gym-btn-ancho gym-mt12", "✔ Usar este descanso");
     ok.type = "button";
-    ok.style.cssText = "width:100%;min-height:48px;margin-top:12px;";
     ok.onclick = () => listo(ctrl.seg());
     m.caja.appendChild(ok);
 });
@@ -198,9 +196,8 @@ export const elegirEjercicio = (
         ctrlDesc.aplicar(descansoDe(rutina, id) ?? 90);   // 90 s si nunca constó
     };
 
-    const btnUsar = el("button", "gym-btn primario");
+    const btnUsar = el("button", "gym-btn primario gym-btn-ancho gym-mt8");
     btnUsar.type = "button";
-    btnUsar.style.cssText = "width:100%;min-height:48px;margin-top:8px;";
     m.caja.appendChild(btnUsar);
 
     let pendiente: { id: string; nombre: string } | null = null;   // qué hace el botón en este momento
@@ -220,9 +217,8 @@ export const elegirEjercicio = (
         if (enUso.length || sinGrupo) {
             const chip = (texto: string, valor: string, especial = ""): void => {
                 const activo = especial === "sin" ? soloSinGrupo : !soloSinGrupo && grupoActivo === valor;
-                const c = el("button", "gym-chip" + (activo ? " on" : ""), texto);
+                const c = el("button", "gym-chip gym-puntero" + (activo ? " on" : ""), texto);
                 c.type = "button";
-                c.style.cursor = "pointer";
                 c.onclick = () => { grupoActivo = valor; soloSinGrupo = especial === "sin"; pintar(); };
                 cajaGrupos.appendChild(c);
             };
@@ -255,21 +251,23 @@ export const elegirEjercicio = (
             const txt = el("div", "flex:1;min-width:0;");
             // Última marca en ESTA rutina; si el ejercicio solo existe en otra, se
             // dice de qué rutina viene en vez de prometer «sin registros todavía».
-            txt.innerHTML = `<div style="font-weight:600">${esc(x.nombre)}` +
-                (g ? ` <span class="gym-chip" style="font-size:.72em;font-weight:700;opacity:.85;">${esc(g)}</span>`
-                   : ` <span class="gym-chip" style="font-size:.72em;font-weight:700;opacity:.45;">sin grupo</span>`) + `</div>` +
-                `<div style="font-size:.75em;opacity:.62;margin-top:1px;">` +
-                (u ? `última vez: ${u.reps ?? "–"} × ${pesoTexto(u.peso)} · ${fechaLegible(u.fecha)}`
-                   : x.rutina ? `solo en «${esc(x.rutina)}» · sin registros en esta rutina`
-                              : "sin registros todavía") + `</div>`;
+            const nomFila = el("div", "gym-ej-nombre");
+            nomFila.append(x.nombre, " ");
+            const chipGrupo = el("span", g ? "gym-chip gym-chip-mini gym-grupo" : "gym-chip gym-chip-mini gym-sin-grupo",
+                g || "sin grupo");
+            nomFila.appendChild(chipGrupo);
+            const subFila = el("div", "gym-ej-sub",
+                u ? `última vez: ${u.reps ?? "–"} × ${pesoTexto(u.peso)} · ${fechaLegible(u.fecha)}`
+                  : x.rutina ? `solo en «${x.rutina}» · sin registros en esta rutina`
+                             : "sin registros todavía");
+            txt.append(nomFila, subFila);
             fila.appendChild(txt);
             // 🏷: clasificar el ejercicio por grupo muscular (para filtrar y buscar)
-            const btnG = el("button", "gym-chip", g || "🏷");
+            const btnG = el("button", "gym-chip gym-chip-btn", g || "🏷");
             btnG.type = "button";
             btnG.title = g
                 ? `Grupo muscular: ${g} — clic para cambiar o quitar`
                 : "Asignar grupo muscular (para filtrar y buscar por él)";
-            btnG.style.cssText = "flex:none;cursor:pointer;opacity:.85;";
             btnG.onclick = async e => {
                 e.stopPropagation();   // NO elegir el ejercicio al clasificarlo
                 const sugeridos = [...new Set(Object.values(gruposEnMemoria()))]
@@ -378,10 +376,9 @@ export const gestionarEjercicios = (): void => {
     // Purga de entradas huérfanas: solo aparece si el fichero de grupos guarda
     // ejercicios que ya no están en ninguna rutina ni plantilla (p. ej. tras
     // borrar una rutina entera). Nunca toca rutinas ni plantillas.
-    const btnPurga = el("button", "gym-btn");
+    const btnPurga = el("button", "gym-btn gym-btn-purga");
     btnPurga.type = "button";
     btnPurga.hidden = true;
-    btnPurga.style.cssText = "width:100%;min-height:40px;margin-top:8px;";
     btnPurga.onclick = async () => {
         if (!huerfanos.length) return;
         const ok = await confirmar("🧹 Purgar entradas sin uso",
@@ -450,10 +447,9 @@ export const gestionarEjercicios = (): void => {
             inG.setAttribute("list", dl.id);
             inG.style.cssText = "flex:0 1 130px;" + estInput;
 
-            const guardar = el("button", "gym-btn", "💾");
+            const guardar = el("button", "gym-btn gym-btn-guardar-ej", "💾");
             guardar.type = "button";
             guardar.title = "Guardar nombre y grupo de este ejercicio";
-            guardar.style.cssText = "flex:none;min-width:44px;min-height:38px;padding:6px 12px;";
             const marcar = () => guardar.classList.add("primario");   // hay cambios pendientes
             inN.oninput = marcar;
             // Aviso «sin grupo»: visible mientras el campo esté vacío (se oculta

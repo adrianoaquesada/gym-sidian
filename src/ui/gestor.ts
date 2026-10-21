@@ -18,7 +18,7 @@ import {
     plantillaExiste, resumenLibre, semanaActual, semanasTotales,
     transcurrida,
 } from "../datos";
-import { esc, fechaLegible, hoy, limpiarNombre, sumarDias } from "../util";
+import { fechaLegible, hoy, limpiarNombre, sumarDias } from "../util";
 import { pesoTexto } from "../unidades";
 import type { LecturaNota, MedidasDatos, Rutina } from "../tipos";
 import { btn, el, KPI, modal, pedirTexto, toast } from "./componentes";
@@ -51,8 +51,7 @@ export const pintarDashboard = async (cont: HTMLElement, rutinaId: string): Prom
         medidas = { datos: medidasVacias(), ruta: conf().rutaMedidas };
     }
 
-    const cont2 = el("div", "gym-g");
-    cont2.style.lineHeight = "1.45";
+    const cont2 = el("div", "gym-g");   // line-height:1.45 en CSS
     cont.appendChild(cont2);
 
     // Cabecera naranja = zona de navegación: «Rutinas › 🏋️ Esta rutina»
@@ -60,7 +59,7 @@ export const pintarDashboard = async (cont: HTMLElement, rutinaId: string): Prom
         { texto: "Rutinas", ir: () => void abrirLista() },
         { texto: `🏋️ ${rutina.nombre || "Sin nombre"}` },
     ], {
-        subtitulo: `${rutina.objetivo ? esc(rutina.objetivo) + " · " : ""}` +
+        subtitulo: `${rutina.objetivo ? rutina.objetivo + " · " : ""}` +
             `${fechaLegible(rutina.inicio)} → ${fechaLegible(rutina.fin)}`,
     });
 
@@ -77,7 +76,8 @@ export const pintarDashboard = async (cont: HTMLElement, rutinaId: string): Prom
 
 const pintarError = (cont: HTMLElement, msg: string): void => {
     const c = el("div", "gym-aviso");
-    c.innerHTML = `⚠️ ${esc(msg)}<br/><span style="opacity:.8">No toco nada hasta que el archivo de datos vuelva a estar legible.</span>`;
+    c.append(`⚠️ ${msg}`, el("br"));
+    c.append(el("span", "gym-tenue", "No toco nada hasta que el archivo de datos vuelva a estar legible."));
     cont.appendChild(c);
 };
 
@@ -94,8 +94,7 @@ const seccionDetalles = (c: HTMLElement, rutina: Rutina, pintar: Pintar): void =
     fila.appendChild(KPI("Estado", estadoTxt(rutina), colorEstado(rutina),
         transcurrida(rutina) ? "pasada su fecha de fin" : `${semTotal} semanas`));
     fila.appendChild(KPI("Progreso", `Sem. ${semActual || "–"}/${semTotal}`, CONFIG.NARANJA,
-        `<span style="display:block;height:6px;border-radius:4px;background:var(--background-secondary);margin-top:4px;overflow:hidden">` +
-        `<span style="display:block;height:100%;width:${(avance * 100).toFixed(0)}%;background:${CONFIG.NARANJA}"></span></span>`));
+        barraAvance(avance)));
     if (esLibre(rutina)) {
         // Sin días programados no hay "Días / semana" que medir: lo que importa
         // es cuántos días has ido y si mantienes la racha de semanas.
@@ -116,47 +115,54 @@ const seccionDetalles = (c: HTMLElement, rutina: Rutina, pintar: Pintar): void =
     // Estructura: días y ejercicios (o el aviso de que aquí no los hay)
     if (esLibre(rutina)) {
         const cat = catalogoEjercicios(rutina);
-        const box = el("div", "padding:10px 12px;border-radius:9px;background:var(--background-secondary);border:1px solid var(--background-modifier-border);margin:6px 0 4px;");
-        box.innerHTML = `<div style="font-weight:700;color:${CONFIG.NARANJA}">🗒 Rutina libre</div>` +
-            `<div style="font-size:.78em;opacity:.75;margin-bottom:8px">` +
-            `Sin días de la semana ni ejercicios fijos: cada día anotas lo que haces de verdad. ` +
-            `Las variantes cuentan aparte («Press banca» y «Press banca con mancuernas» tienen su propia progresión).</div>` +
-            (cat.length
-                ? `<div style="font-size:.82em;line-height:1.9">` +
-                  cat.slice(0, 40).map(x => `<span class="gym-chip" style="display:inline-block;margin:0 5px 5px 0">${esc(x.nombre)}</span>`).join("") +
-                  `</div>` + (cat.length > 40 ? `<div style="font-size:.74em;opacity:.6;margin-top:4px">…y ${cat.length - 40} más</div>` : "")
-                : `<div style="font-size:.82em;opacity:.7">Todavía no has registrado ningún ejercicio.</div>`);
+        const box = el("div", "gym-caja gym-margen");
+        box.append(el("div", "gym-tit-naranja", "🗒 Rutina libre"));
+        box.append(el("div", "gym-caja-sub",
+            "Sin días de la semana ni ejercicios fijos: cada día anotas lo que haces de verdad. " +
+            "Las variantes cuentan aparte («Press banca» y «Press banca con mancuernas» tienen su propia progresión)."));
+        if (cat.length) {
+            const chips = el("div", "gym-caja-chips");
+            for (const x of cat.slice(0, 40)) chips.append(el("span", "gym-chip", x.nombre));
+            box.append(chips);
+            if (cat.length > 40) box.append(el("div", "gym-caja-mas", `…y ${cat.length - 40} más`));
+        } else {
+            box.append(el("div", "gym-caja-vacio", "Todavía no has registrado ningún ejercicio."));
+        }
         c.appendChild(box);
     } else {
         const est = el("div", "display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin:6px 0 4px;");
         for (const d of rutina.dias ?? []) {
-            const box = el("div", "padding:10px 12px;border-radius:9px;background:var(--background-secondary);border:1px solid var(--background-modifier-border);");
+            const box = el("div", "gym-caja");
             const diasTxt = (d.diasSemana ?? []).map(n => DIAS_LARGO[(Number(n) || 1) - 1]).filter(Boolean).join(", ");
-            box.innerHTML = `<div style="font-weight:700;color:${CONFIG.NARANJA}">${esc(d.nombre)}</div>` +
-                `<div style="font-size:.76em;opacity:.75;margin-bottom:6px">${esc(diasTxt || "sin días asignados")}</div>` +
-                `<ul style="margin:0;padding-left:16px;font-size:.82em;line-height:1.6">` +
-                (d.ejercicios ?? []).map(e =>
-                    `<li>${esc(e.nombre)}` +
-                    ` <span style="opacity:.7">· ${e.series}×${e.repsObjetivo}` +
-                    (e.pesoObjetivo ? ` @ ${pesoTexto(e.pesoObjetivo)}` : "") +
-                    (e.descansoSeg ? ` · desc. ${e.descansoSeg}s` : "") + `</span></li>`).join("") +
-                `</ul>`;
+            box.append(el("div", "gym-tit-naranja", d.nombre));
+            box.append(el("div", "gym-caja-dias", diasTxt || "sin días asignados"));
+            const ul = el("ul", "gym-caja-ul");
+            for (const e of d.ejercicios ?? []) {
+                const li = el("li");
+                li.append(e.nombre, " ",
+                    el("span", "gym-tenue",
+                        `· ${e.series}×${e.repsObjetivo}` +
+                        (e.pesoObjetivo ? ` @ ${pesoTexto(e.pesoObjetivo)}` : "") +
+                        (e.descansoSeg ? ` · desc. ${e.descansoSeg}s` : "")));
+                ul.appendChild(li);
+            }
+            box.appendChild(ul);
             est.appendChild(box);
         }
         c.appendChild(est);
     }
 
-    // Botones de acción
+    // Botones de acción (los callbacks devuelven promesa: se descartan con `void`)
     const acciones = el("div", "gym-botones");
-    acciones.appendChild(btn("✏️ Editar rutina", "", () => abrirFormulario({ modo: "editar", rutinaId: rutina.id })));
+    acciones.appendChild(btn("✏️ Editar rutina", "", () => void abrirFormulario({ modo: "editar", rutinaId: rutina.id })));
     acciones.appendChild(btn(
         rutina.estado === "activa" ? "⏸ Pausar" : rutina.estado === "pausada" ? "▶ Reanudar" : "🔄 Marcar como activa",
-        "", () => cambiarEstado(rutina, pintar)));
-    if (rutina.estado !== "finalizada") acciones.appendChild(btn("🏁 Finalizar", "", () => cambiarEstado(rutina, pintar)));
-    acciones.appendChild(btn("📄 Duplicar", "", () => duplicar(rutina)));
+        "", () => void cambiarEstado(rutina, pintar)));
+    if (rutina.estado !== "finalizada") acciones.appendChild(btn("🏁 Finalizar", "", () => void cambiarEstado(rutina, pintar)));
+    acciones.appendChild(btn("📄 Duplicar", "", () => void duplicar(rutina)));
     // Una rutina libre no tiene estructura que plantillear
-    if (!esLibre(rutina)) acciones.appendChild(btn("📦 Guardar como plantilla", "", () => guardarComoPlantilla(rutina)));
-    if (transcurrida(rutina)) acciones.appendChild(btn("➕ Extender 4 semanas", "", () => extender(rutina, pintar)));
+    if (!esLibre(rutina)) acciones.appendChild(btn("📦 Guardar como plantilla", "", () => void guardarComoPlantilla(rutina)));
+    if (transcurrida(rutina)) acciones.appendChild(btn("➕ Extender 4 semanas", "", () => void extender(rutina, pintar)));
     c.appendChild(acciones);
 };
 
@@ -166,6 +172,15 @@ const estadoTxt = (r: Rutina): string =>
 const colorEstado = (r: Rutina): string =>
     r.estado === "pausada" ? "var(--text-muted)" : r.estado === "finalizada" || transcurrida(r)
         ? CONFIG.AZUL : CONFIG.VERDE;
+
+/* Barra de avance del KPI «Progreso» (el pie acepta elementos, no solo texto) */
+const barraAvance = (avance: number): HTMLSpanElement => {
+    const marco = el("span", "gym-progreso");
+    const relleno = el("span", "gym-progreso-fill");
+    relleno.style.width = `${(Math.max(0, Math.min(1, avance)) * 100).toFixed(0)}%`;
+    marco.appendChild(relleno);
+    return marco;
+};
 
 const cambiarEstado = async (rutina: Rutina, pintar: Pintar): Promise<void> => {
     const m = modal("Estado de la rutina", rutina.nombre);
@@ -178,7 +193,7 @@ const cambiarEstado = async (rutina: Rutina, pintar: Pintar): Promise<void> => {
                 await escribirRutina(rutina);      // guarda el archivo y su fila en el índice
                 m.cerrar();
                 toast(`✅ Estado: ${valor}`);
-                pintar();
+                await pintar();
             } catch (e: any) {
                 console.error("[Gym Stone estado]", e);
                 toast("⚠️ No pude cambiar el estado: " + (e?.message ?? e), false);
@@ -195,7 +210,7 @@ const extender = async (rutina: Rutina, pintar: Pintar): Promise<void> => {
         if (rutina.estado === "finalizada") rutina.estado = "activa";
         await escribirRutina(rutina);
         toast(`✅ Rutina extendida hasta el ${rutina.fin}`);
-        pintar();
+        await pintar();
     } catch (e: any) {
         console.error("[Gym Stone extender]", e);
         toast("⚠️ No pude extender la rutina: " + (e?.message ?? e), false);

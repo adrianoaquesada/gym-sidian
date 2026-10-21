@@ -5,7 +5,7 @@
    (qué rutina está abierta); el contenido lo pinta ui/gestor.ts.
    ═══════════════════════════════════════════════════════════════════════════ */
 
-import { ItemView, type WorkspaceLeaf } from "obsidian";
+import { ItemView, type ViewStateResult, type WorkspaceLeaf } from "obsidian";
 import { aplicacion } from "../estado";
 import { leerRutina, rutaDatosDe } from "../datos";
 import { fijarUnidadPeso, pesoActual, unidadContraria } from "../unidades";
@@ -28,9 +28,9 @@ export class VistaRutina extends ItemView {
     /* El id viaja en el estado de la pestaña: al reabrir Obsidian se restaura */
     getState(): EstadoRutinaAbierta { return { rutinaId: this.rutinaId }; }
 
-    async setState(state: EstadoRutinaAbierta, result: unknown): Promise<void> {
+    async setState(state: EstadoRutinaAbierta, result: ViewStateResult): Promise<void> {
         this.rutinaId = state?.rutinaId ?? null;
-        await super.setState(state as never, result as never);
+        await super.setState(state, result);
         await this.pintar();
     }
 

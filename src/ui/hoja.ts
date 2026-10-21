@@ -36,12 +36,14 @@ export const hojaFormulario = async ({ modo, rutinaId = null }: OpcionesHoja): P
     btnCerrar.type = "button";
     btnCerrar.title = "Cerrar (Esc)";
 
-    const tit = el("div", "gym-hoja-tit");
-    tit.innerHTML = modo === "editar"
-        ? `<span style="color:#F99624">✏️ Editar rutina</span> <span class="gym-hoja-sub">las sesiones registradas se conservan</span>`
-        : `<span style="color:#F99624">🏋️ Nueva rutina</span> <span class="gym-hoja-sub">al guardar se cierra la hoja y ves su ficha</span>`;
-
-    tit.style.cssText = "flex:1;min-width:0;";   // el título a la izquierda, la ✕ a la derecha
+    const tit = el("div", "gym-hoja-tit");   // flex:1 en CSS: el título a la izquierda, la ✕ a la derecha
+    tit.append(
+        el("span", "gym-naranja", modo === "editar" ? "✏️ Editar rutina" : "🏋️ Nueva rutina"),
+        " ",
+        el("span", "gym-hoja-sub", modo === "editar"
+            ? "las sesiones registradas se conservan"
+            : "al guardar se cierra la hoja y ves su ficha"),
+    );
     cab.appendChild(tit);
     cab.appendChild(btnCerrar);
     hoja.appendChild(cab);
