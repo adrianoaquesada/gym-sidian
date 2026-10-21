@@ -1,0 +1,10 @@
+{
+  "id": "gym-stone",
+  "name": "Gym Stone",
+  "version": "1.0.0",
+  "minAppVersion": "1.5.0",
+  "description": "Sistema de rutinas de gimnasio: crea rutinas, registra sesiones, medidas y anotaciones, y ve tu progreso en un calendario y unas estadísticas.",
+  "author": "adrianoaquesada",
+  "authorUrl": "https://github.com/adrianoaquesada",
+  "isDesktopOnly": false
+}

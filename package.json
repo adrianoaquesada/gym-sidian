@@ -1,0 +1,27 @@
+{
+  "name": "gym-stone",
+  "version": "1.0.0",
+  "description": "Sistema de rutinas de gimnasio para Obsidian (pestañas propias, sin Dataview).",
+  "author": "adrianoaquesada",
+  "main": "main.js",
+  "scripts": {
+    "dev": "node esbuild.config.mjs",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production"
+  },
+  "keywords": [
+    "obsidian",
+    "gimnasio",
+    "rutinas",
+    "entrenamiento"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^24.10.9",
+    "builtin-modules": "^4.0.0",
+    "esbuild": "^0.25.9",
+    "obsidian": "latest",
+    "tslib": "^2.8.1",
+    "typescript": "^5.9.3"
+  }
+}

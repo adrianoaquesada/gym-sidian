@@ -1,0 +1,18 @@
+# ── No se publican en el repo ──────────────────────────────────────────────
+
+# Dependencias (se regeneran con npm install)
+node_modules/
+
+# Artefacto compilado: lo genera el workflow en cada release
+# (se adjunta main.js a la release, pero no vive en git)
+main.js
+
+# Notas internas de desarrollo (con rutas y datos personales)
+REANUDAR.md
+CONVERSION.md
+scripts/
+
+# ── Sistema / editor ───────────────────────────────────────────────────────
+.DS_Store
+*.log
+.obsidian/
