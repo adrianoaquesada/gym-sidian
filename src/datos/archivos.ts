@@ -12,10 +12,32 @@
      · lectura fallida → se devuelve { error } y NO se escribe nada
    ═══════════════════════════════════════════════════════════════════════════ */
 
-import { TFile } from "obsidian";
+import { TFile, TFolder } from "obsidian";
 import { aplicacion } from "../estado";
 import type { LecturaNota } from "../tipos";
 import { aTexto, msgError } from "../util/texto";
+
+/* Todos los .md de UNA carpeta (y sus subcarpetas), sin mirar el resto del
+   vault: el plugin solo lista lo que hay en sus propias carpetas de datos.
+   Ojo: NO vault.getMarkdownFiles()/getFiles(), que devuelven la ruta de TODOS
+   los archivos del vault aunque luego se filtre (la revisión de la comunidad
+   lo marca como «Vault Enumeration»); aquí se baja solo por el árbol de la
+   carpeta pedida y, si no existe, no hay nada que listar. */
+export const archivosMdEnCarpeta = (carpeta: string): TFile[] => {
+    if (!carpeta) return [];
+    const raiz = aplicacion().vault.getFolderByPath(carpeta);
+    if (!raiz) return [];
+    const fuera: TFile[] = [];
+    const recorrer = (nodo: TFolder): void => {
+        for (const h of nodo.children) {
+            // Los .bak y .tmp quedan fuera: solo .md (con cualquier mayúscula)
+            if (h instanceof TFile) { if (h.extension.toLowerCase() === "md") fuera.push(h); }
+            else if (h instanceof TFolder) recorrer(h);
+        }
+    };
+    recorrer(raiz);
+    return fuera;
+};
 
 // Extrae el contenido del primer bloque ```json``` de una nota
 export const bloqueJson = (txt: unknown): string | null => {

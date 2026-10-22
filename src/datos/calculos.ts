@@ -5,10 +5,10 @@
    volumen, 1RM estimado (Epley), historial por ejercicio y catálogos.
    ═══════════════════════════════════════════════════════════════════════════ */
 
-import { conf, aplicacion } from "../estado";
+import { conf } from "../estado";
 import { diffDias, diaSemana, esFechaValida, hoy, lunesDe, sumarDias, tsDe, tsAhora } from "../util/fechas";
 import { norm, slug } from "../util/texto";
-import { leerNotaDatos } from "./archivos";
+import { archivosMdEnCarpeta, leerNotaDatos } from "./archivos";
 import { semanasTotales } from "./rutinas";
 import type {
     DiaRutina, EjercicioCatalogo, EjercicioDef, Rutina, SerieSesion, Sesion,
@@ -230,9 +230,8 @@ export const catalogoEjerciciosTodas = async (rutinaActual?: Rutina | null): Pro
 
     let archivos: { path: string; basename: string }[] = [];
     try {
-        // Los .bak quedan fuera: getMarkdownFiles solo devuelve los .md
-        archivos = aplicacion().vault.getMarkdownFiles()
-            .filter(f => f.path.startsWith(conf().carpetaDatos + "/"));
+        // Solo .md de la carpeta de datos: nada del resto del vault
+        archivos = archivosMdEnCarpeta(conf().carpetaDatos);
     } catch { archivos = []; }
 
     for (const f of archivos) {

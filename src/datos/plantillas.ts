@@ -5,13 +5,12 @@
 import { TFile } from "obsidian";
 import { conf, aplicacion } from "../estado";
 import { limpiarNombre } from "../util/texto";
-import { contenidoNotaDatos, escribirSeguro, leerNotaDatos } from "./archivos";
+import { contenidoNotaDatos, archivosMdEnCarpeta, escribirSeguro, leerNotaDatos } from "./archivos";
 import type { LecturaNota, PlantillaRutina, Rutina } from "../tipos";
 
 export const listarPlantillas = (): string[] => {
     try {
-        return aplicacion().vault.getMarkdownFiles()
-            .filter(f => f.path.startsWith(conf().carpetaPlantillas + "/"))
+        return archivosMdEnCarpeta(conf().carpetaPlantillas)
             .map(f => f.basename)
             .sort((a, b) => a.localeCompare(b, "es"));
     } catch { return []; }

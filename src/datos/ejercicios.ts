@@ -7,9 +7,9 @@
    fichero global de grupos (datos/grupos.ts).
    ═══════════════════════════════════════════════════════════════════════════ */
 
-import { aplicacion, conf } from "../estado";
+import { conf } from "../estado";
 import { limpiarNombre } from "../util";
-import { leerNotaDatos } from "./archivos";
+import { archivosMdEnCarpeta, leerNotaDatos } from "./archivos";
 import { escribirRutina } from "./rutinas";
 import { actualizarPlantilla, leerPlantilla, listarPlantillas } from "./plantillas";
 import { cargarGrupos, gruposEnMemoria } from "./grupos";
@@ -25,11 +25,10 @@ export interface EjercicioGestion {
     apariciones: number;   // total de sitios (plan + sesiones)
 }
 
-// Los .bak quedan fuera: getMarkdownFiles solo devuelve los .md
+// Solo .md de la carpeta de datos (ni .bak ni nada de fuera de ella)
 const archivosRutinas = (): { path: string }[] => {
     try {
-        return aplicacion().vault.getMarkdownFiles()
-            .filter(f => f.path.startsWith(conf().carpetaDatos + "/"));
+        return archivosMdEnCarpeta(conf().carpetaDatos);
     } catch { return []; }
 };
 
