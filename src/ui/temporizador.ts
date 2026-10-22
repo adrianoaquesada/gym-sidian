@@ -4,9 +4,11 @@
 
    Se abre desde «Rutinas» —la lista o el dashboard de una rutina— o con el
    comando «Abrir el temporizador». Es la suma de tres referencias: el anillo
-   circular con la hora a la que sonará, los presets de un toque y el ajuste a
-   mano de h/m/s, más los controles del descanso de la sesión guiada (−15 s,
-   ＋15 s, pausa…).
+   circular con la hora a la que sonará, el ajuste a mano de h/m/s y los
+   presets de un toque —en carrusel lateral—, más los controles del descanso
+   de la sesión guiada (−15 s, ＋15 s…). El botón principal lo es TODO: arranca
+   con los campos puestos y, mientras corre, se convierte en pausa y en
+   reanudar; no hay un botón de pausa aparte.
 
    El estado vive en el MÓDULO, no en el modal: se puede cerrar la ventana y
    la cuenta atrás sigue corriendo; al volver se reanuda donde estaba. Al
@@ -182,21 +184,8 @@ export function abrirTemporizador(): void {
     const estado = el("div", "gym-temp-estado");
     m.caja.appendChild(estado);
 
-    // ── Presets de un toque ──
-    m.caja.appendChild(el("div", "gym-et gym-temp-tit", "Rápidos"));
-    const filaPres = el("div", "gym-temp-presets");
-    const chips: HTMLButtonElement[] = [];
-    for (const [txt, ms] of PRESETS) {
-        const c = el("button", "gym-chip gym-temp-chip", txt);
-        c.type = "button";
-        c.title = `Arrancar una cuenta atrás de ${txt}`;
-        c.onclick = () => { fijarEntradas(ms); arrancar(ms); };
-        filaPres.appendChild(c);
-        chips.push(c);
-    }
-    m.caja.appendChild(filaPres);
-
-    // ── Ajuste a mano de horas / minutos / segunderos ──
+    // ── Ajuste a mano de horas / minutos / segundos (lo PRIMERO: es lo que se
+    //    edita; los presets de abajo solo sobrescriben estos campos y arrancan) ──
     m.caja.appendChild(el("div", "gym-et gym-temp-tit", "Ajustar"));
     const filaAjuste = el("div", "gym-temp-ajuste");
     const entradas: HTMLInputElement[] = [];
@@ -211,35 +200,56 @@ export function abrirTemporizador(): void {
         filaAjuste.appendChild(campo);
         entradas.push(i);
     }
-    const bEmpezar = el("button", "gym-btn gym-temp-empezar", "▶ Empezar");
+    m.caja.appendChild(filaAjuste);
+
+    const msDeEntradas = (): number =>
+        (Number(entradas[0].value) || 0) * 3600000
+        + (Number(entradas[1].value) || 0) * 60000
+        + (Number(entradas[2].value) || 0) * 1000;
+
+    // El botón principal lo es TODO: arranca con los campos puestos y, en
+    // marcha o en pausa, hace de pausa/reanudar. No hay botón de pausa aparte.
+    const bEmpezar = el("button", "gym-btn gym-temp-empezar primario", "▶ Empezar");
     bEmpezar.type = "button";
     bEmpezar.onclick = () => {
-        const ms = (Number(entradas[0].value) || 0) * 3600000
-            + (Number(entradas[1].value) || 0) * 60000
-            + (Number(entradas[2].value) || 0) * 1000;
+        if (finEn != null || pausado) { alternarPausa(); return; }   // en marcha o pausado: es el de pausa
+        const ms = msDeEntradas();
         if (ms < 1000) return toast("⚠️ Pon al menos 1 segundo.", false);
         arrancar(ms);
     };
-    filaAjuste.appendChild(bEmpezar);
-    m.caja.appendChild(filaAjuste);
+    m.caja.appendChild(bEmpezar);
 
-    // ── Controles: los mismos del descanso de la sesión guiada ──
+    // ── Presets de un toque: carrusel lateral (se desliza en horizontal y no
+    //    rompe la estrechez del modal, como las chips de la lista) ──
+    m.caja.appendChild(el("div", "gym-et gym-temp-tit", "Rápidos"));
+    const filaPres = el("div", "gym-temp-presets");
+    const chips: HTMLButtonElement[] = [];
+    for (const [txt, ms] of PRESETS) {
+        const c = el("button", "gym-chip gym-temp-chip", txt);
+        c.type = "button";
+        c.title = `Arrancar una cuenta atrás de ${txt}`;
+        c.onclick = () => { fijarEntradas(ms); arrancar(ms); };
+        filaPres.appendChild(c);
+        chips.push(c);
+    }
+    m.caja.appendChild(filaPres);
+
+    // ── Controles: los mismos del descanso de la sesión guiada, sin botón de
+    //    pausa (eso ya lo hace el botón principal) ──
     const controles = el("div", "gym-temp-controles");
     const bMenos = el("button", "gym-btn-g", "−15 s"); bMenos.type = "button";
     bMenos.title = "Restar 15 segundos";
     const bMas = el("button", "gym-btn-g", "＋15 s"); bMas.type = "button";
     bMas.title = "Sumar 15 segundos";
-    const bPausa = el("button", "gym-btn-g", "⏸ Pausa"); bPausa.type = "button";
     const bReiniciar = el("button", "gym-btn-g", "↺ Reiniciar"); bReiniciar.type = "button";
     bReiniciar.title = "Volver a arrancar con la duración elegida";
     const bParar = el("button", "gym-btn-g", "⏹ Parar"); bParar.type = "button";
     bParar.title = "Parar la cuenta atrás y volver al principio";
     bMenos.onclick = () => ajustar(-15000);
     bMas.onclick = () => ajustar(15000);
-    bPausa.onclick = () => alternarPausa();
     bReiniciar.onclick = () => arrancar(totalMs);
     bParar.onclick = () => parar();
-    controles.append(bMenos, bMas, bPausa, bReiniciar, bParar);
+    controles.append(bMenos, bMas, bReiniciar, bParar);
     m.caja.appendChild(controles);
 
     // ── Repintado: lee el estado del módulo y lo refleja en pantalla ──
@@ -262,9 +272,10 @@ export function abrirTemporizador(): void {
         estado.textContent = corriendo ? "● En marcha" : listo ? "✔ ¡Terminado!" : pausado ? "⏸ En pausa" : "⏹ Parado";
         estado.className = "gym-temp-estado" + (corriendo ? " on" : listo ? " listo" : "");
 
-        bPausa.textContent = pausado ? "▶ Reanudar" : "⏸ Pausa";
-        bPausa.classList.toggle("pausa", corriendo);
-        bPausa.disabled = !corriendo && !pausado;
+        // El botón principal lo es TODO: arranca, pausa y reanuda
+        bEmpezar.textContent = corriendo ? "⏸ Pausa" : pausado ? "▶ Reanudar" : "▶ Empezar";
+        bEmpezar.classList.toggle("primario", !corriendo);
+        bEmpezar.classList.toggle("pausa", corriendo);
         bMenos.disabled = r <= 0;
         bReiniciar.disabled = corriendo && r === totalMs;
         bParar.disabled = !corriendo && !pausado;

@@ -486,14 +486,27 @@ table.gym-tabla td { border-bottom:1px solid var(--background-modifier-border); 
 .gym-temp-estado.on { color: #F99624; }
 .gym-temp-estado.listo { color: #2ecc71; }
 .gym-temp-tit { margin-top: 12px; }
-.gym-temp-presets { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
-.gym-temp-chip { min-height: 42px; padding: 8px 14px; font-size: .88em; cursor: pointer; }
+/* Rápidos: CARRUSEL lateral. Los chips no se encogen (flex:none) y la fila se
+   desliza en horizontal; el desbordamiento lateral se sale de la caja del
+   modal para que el scroll llegue hasta el borde (márgenes negativos). */
+.gym-temp-presets {
+    display: flex; gap: 8px; overflow-x: auto; padding: 2px 14px 6px;
+    margin: 0 -14px; -webkit-overflow-scrolling: touch; scroll-snap-type: x proximity;
+}
+.gym-temp-presets::-webkit-scrollbar { height: 5px; }
+.gym-temp-chip {
+    flex: none; min-height: 42px; padding: 8px 14px; font-size: .88em;
+    cursor: pointer; scroll-snap-align: start;
+}
 .gym-temp-ajuste { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; }
 .gym-temp-campo { flex: 1 1 84px; display: flex; flex-direction: column; gap: 3px; }
 .gym-temp-campo .gym-et { text-align: center; margin-bottom: 0; }
 /* (0,2,1): empata con .gym-modal input[type=number] y va después en el
    fichero → gana, sin necesidad de !important. */
 .gym-temp-caja .gym-temp-campo input { min-height: 46px; text-align: center; font-size: 1em; }
-.gym-temp-empezar { flex: 1 1 100%; min-height: 46px; }
+/* El botón principal ocupa el ancho entero: es arrancar Y pausa/reanudar. */
+.gym-temp-empezar { width: 100%; min-height: 50px; font-size: 1em; margin-top: 8px; }
+.gym-temp-empezar.pausa { background: color-mix(in srgb, #e74c3c 16%, transparent);
+    border-color: #e74c3c; color: #e74c3c; }
 .gym-temp-controles { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-top: 14px; }
 .gym-temp-controles .gym-btn-g { flex: 1 1 auto; min-width: 96px; }
