@@ -29,6 +29,12 @@ let pausado = false;
 let idReloj: number | null = null;
 let alPintar: (() => void) | null = null;   // repintado del modal, si está abierto
 
+/* MODO PRUEBAS (reversible a petición): mientras el temporizador corre o está
+   en pausa se OCULTAN las secciones «Ajustar» y «Rápidos», y solo quedan el
+   anillo, el estado y los controles. Para volver al comportamiento anterior
+   basta con poner esto a false: el repintado solo añade/quita .gym-oculto. */
+const OCULTAR_SECCIONES_AL_CORRER = true;
+
 const restante = (): number => (finEn != null ? Math.max(0, finEn - Date.now()) : guardado);
 
 /* ── Aviso al terminar: pitido (Web Audio) + vibración + toast ──────────── */
@@ -185,8 +191,11 @@ export function abrirTemporizador(): void {
     m.caja.appendChild(estado);
 
     // ── Ajuste a mano de horas / minutos / segundos (lo PRIMERO: es lo que se
-    //    edita; los presets de abajo solo sobrescriben estos campos y arrancan) ──
-    m.caja.appendChild(el("div", "gym-et gym-temp-tit", "Ajustar"));
+    //    edita; los presets de abajo solo sobrescriben estos campos y arrancan).
+    //    Va envuelto en su propia sección para poder ocultarla de golpe mientras
+    //    el temporizador corre (modo pruebas, arriba del todo en el módulo). ──
+    const secAjustar = el("div", "gym-temp-sec");
+    secAjustar.appendChild(el("div", "gym-et gym-temp-tit", "Ajustar"));
     const filaAjuste = el("div", "gym-temp-ajuste");
     const entradas: HTMLInputElement[] = [];
     for (const [etq, max] of [["Horas", 99], ["Minutos", 59], ["Segundos", 59]] as [string, number][]) {
@@ -200,12 +209,47 @@ export function abrirTemporizador(): void {
         filaAjuste.appendChild(campo);
         entradas.push(i);
     }
-    m.caja.appendChild(filaAjuste);
+    secAjustar.appendChild(filaAjuste);
+    m.caja.appendChild(secAjustar);
 
     const msDeEntradas = (): number =>
         (Number(entradas[0].value) || 0) * 3600000
         + (Number(entradas[1].value) || 0) * 60000
         + (Number(entradas[2].value) || 0) * 1000;
+
+    // ── Presets de un toque: carrusel lateral (se desliza en horizontal y no
+    //    rompe la estrechez del modal). También se oculta al correr. ──
+    const secRapidos = el("div", "gym-temp-sec");
+    secRapidos.appendChild(el("div", "gym-et gym-temp-tit", "Rápidos"));
+    const filaPres = el("div", "gym-temp-presets");
+    const chips: HTMLButtonElement[] = [];
+    for (const [txt, ms] of PRESETS) {
+        const c = el("button", "gym-chip gym-temp-chip", txt);
+        c.type = "button";
+        c.title = `Arrancar una cuenta atrás de ${txt}`;
+        c.onclick = () => { fijarEntradas(ms); arrancar(ms); };
+        filaPres.appendChild(c);
+        chips.push(c);
+    }
+    secRapidos.appendChild(filaPres);
+    m.caja.appendChild(secRapidos);
+
+    // ── Controles: los mismos del descanso de la sesión guiada (−15 s, ＋15 s,
+    //    ↺ Reiniciar). El botón principal y «Parar» van debajo, cada uno en su
+    //    propia fila: el principal es el de usar y Parar el que se quiere
+    //    separar de él para no tocarlo sin querer. ──
+    const controles = el("div", "gym-temp-controles");
+    const bMenos = el("button", "gym-btn-g", "−15 s"); bMenos.type = "button";
+    bMenos.title = "Restar 15 segundos";
+    const bMas = el("button", "gym-btn-g", "＋15 s"); bMas.type = "button";
+    bMas.title = "Sumar 15 segundos";
+    const bReiniciar = el("button", "gym-btn-g", "↺ Reiniciar"); bReiniciar.type = "button";
+    bReiniciar.title = "Volver a arrancar con la duración elegida";
+    bMenos.onclick = () => ajustar(-15000);
+    bMas.onclick = () => ajustar(15000);
+    bReiniciar.onclick = () => arrancar(totalMs);
+    controles.append(bMenos, bMas, bReiniciar);
+    m.caja.appendChild(controles);
 
     // El botón principal lo es TODO: arranca con los campos puestos y, en
     // marcha o en pausa, hace de pausa/reanudar. No hay botón de pausa aparte.
@@ -219,38 +263,10 @@ export function abrirTemporizador(): void {
     };
     m.caja.appendChild(bEmpezar);
 
-    // ── Presets de un toque: carrusel lateral (se desliza en horizontal y no
-    //    rompe la estrechez del modal, como las chips de la lista) ──
-    m.caja.appendChild(el("div", "gym-et gym-temp-tit", "Rápidos"));
-    const filaPres = el("div", "gym-temp-presets");
-    const chips: HTMLButtonElement[] = [];
-    for (const [txt, ms] of PRESETS) {
-        const c = el("button", "gym-chip gym-temp-chip", txt);
-        c.type = "button";
-        c.title = `Arrancar una cuenta atrás de ${txt}`;
-        c.onclick = () => { fijarEntradas(ms); arrancar(ms); };
-        filaPres.appendChild(c);
-        chips.push(c);
-    }
-    m.caja.appendChild(filaPres);
-
-    // ── Controles: los mismos del descanso de la sesión guiada, sin botón de
-    //    pausa (eso ya lo hace el botón principal) ──
-    const controles = el("div", "gym-temp-controles");
-    const bMenos = el("button", "gym-btn-g", "−15 s"); bMenos.type = "button";
-    bMenos.title = "Restar 15 segundos";
-    const bMas = el("button", "gym-btn-g", "＋15 s"); bMas.type = "button";
-    bMas.title = "Sumar 15 segundos";
-    const bReiniciar = el("button", "gym-btn-g", "↺ Reiniciar"); bReiniciar.type = "button";
-    bReiniciar.title = "Volver a arrancar con la duración elegida";
-    const bParar = el("button", "gym-btn-g", "⏹ Parar"); bParar.type = "button";
+    const bParar = el("button", "gym-btn-g gym-temp-parar", "⏹ Parar"); bParar.type = "button";
     bParar.title = "Parar la cuenta atrás y volver al principio";
-    bMenos.onclick = () => ajustar(-15000);
-    bMas.onclick = () => ajustar(15000);
-    bReiniciar.onclick = () => arrancar(totalMs);
     bParar.onclick = () => parar();
-    controles.append(bMenos, bMas, bReiniciar, bParar);
-    m.caja.appendChild(controles);
+    m.caja.appendChild(bParar);
 
     // ── Repintado: lee el estado del módulo y lo refleja en pantalla ──
     const pintar = (): void => {
@@ -279,6 +295,11 @@ export function abrirTemporizador(): void {
         bMenos.disabled = r <= 0;
         bReiniciar.disabled = corriendo && r === totalMs;
         bParar.disabled = !corriendo && !pausado;
+        // MODO PRUEBAS: mientras corre o está en pausa, Ajustar y Rápidos se
+        // ocultan y solo quedan el anillo, el estado y los controles.
+        const ocultar = OCULTAR_SECCIONES_AL_CORRER && (corriendo || pausado);
+        secAjustar.classList.toggle("gym-oculto", ocultar);
+        secRapidos.classList.toggle("gym-oculto", ocultar);
         // El preset elegido se resalta mientras esté vigente esa duración
         chips.forEach((c, i) => c.classList.toggle("on",
             corriendo && totalMs === PRESETS[i][1]));
