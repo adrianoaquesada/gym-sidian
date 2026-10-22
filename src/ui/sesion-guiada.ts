@@ -133,6 +133,9 @@ export async function modoSesion(rutina: Rutina, diaId: string | null, pintar: P
     // y cuánto) para marcarla luego en la línea de tiempo del día.
     let pausaAcum = 0, pausaPend: number | null = null, pausaT0 = 0;
     const pausas: { t: number; ms: number }[] = [];
+    // Último tic del reloj: de aquí sale el tiempo REAL que descuenta el
+    // descanso (ver el intervalo del reloj, abajo del todo).
+    let ultimoTick = Date.now();
     // ── Fin del descanso pendiente de ejecutar: el «¡Listo!» (o ⏭/-15 s)
     // marca cuándo empiezas la serie; al registrarla se reparte el «entre
     // series» en descanso REAL + ejecución. Viaja al navegar (como el
@@ -677,6 +680,7 @@ export async function modoSesion(rutina: Rutina, diaId: string | null, pintar: P
             pausas.push({ t: pausaT0, ms: Date.now() - pausaPend });
             pausaAcum += Date.now() - pausaPend;
             pausaPend = null;
+            ultimoTick = Date.now();   // el tiempo en pausa no se descuenta del descanso
         }
         btnPausa.textContent = pausado ? "▶ Reanudar" : "⏸ Pausa";
         btnPausa.title = pausado ? "Reanudar la sesión" : "Pausa: congela el reloj y el descanso (no cuenta en los tiempos)";
@@ -847,15 +851,25 @@ export async function modoSesion(rutina: Rutina, diaId: string | null, pintar: P
     };
 
     // ── Reloj (cada 250 ms: tiempo de sesión activa y cuenta atrás del descanso) ──
+    // El descanso descuenta el tiempo REAL transcurrido entre tics (dt), no
+    // «250 ms por tic»: con la pantalla apagada u Obsidian en segundo plano el
+    // SO suspende o ralentiza los intervalos del WebView y, al volver, un
+    // contador fijo seguiría desde donde estaba —el descanso se quedaría parado
+    // o atrasado el tiempo que estuviste fuera—. Con dt derivado de Date.now()
+    // (como ya hacía el cronómetro de sesión) el primer tic tras volver descuenta
+    // de golpe todo el tiempo transcurrido y la cuenta atrás es fiel al reloj.
     const idReloj = window.setInterval(() => {
+        const ahora = Date.now();
+        const dt = Math.max(0, ahora - ultimoTick);   // tiempo real desde el tic anterior
+        ultimoTick = ahora;   // se refresca SIEMPRE, también en pausa (si no, al reanudar se descontaría la pausa)
         relojEl.textContent = `⏱ ${relojTexto(transcurridoMs())}`;   // en pausa se congela: el reloj mide tiempo activo
         if (pausado) return;   // la pausa sí congela la cuenta atrás del descanso
         if (descanso && descanso.restanteMs > 0) {
-            descanso.restanteMs -= 250;
+            descanso.restanteMs -= dt;
             if (descanso.restanteMs > 0) {
                 pintarDescanso();
             } else {
-                finDescanso();
+                finDescanso();   // dt ≥ restante: el descanso terminó aunque el SO hubiera suspendido los tics
             }
         }
     }, 250);
