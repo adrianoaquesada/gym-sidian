@@ -19,6 +19,7 @@ import { pintarCabecera } from "./cabecera";
 import { gestionarEjercicios } from "./ejercicios-ui";
 import { formularioMedidas } from "./registro";
 import { elegirDiaGuiada } from "./sesion-guiada";
+import { abrirTemporizador } from "./temporizador";
 import { VISTA_LISTA, abrirComoMarkdown, abrirFormulario, abrirRutina } from "./vistas";
 
 export class VistaLista extends ItemView {
@@ -52,6 +53,7 @@ export class VistaLista extends ItemView {
         // Solo recargar y kg↔lb: crear y registrar medidas viven dentro del
         // panel (sus botones), aquí no se duplican.
         this.addAction("refresh-cw", "Recargar lista", () => void this.pintar());
+        this.addAction("timer", "⏱ Temporizador libre (cuenta atrás)", () => abrirTemporizador());
         this.addAction("arrow-left-right", "Alternar pesos kg ↔ libras", () => {
             fijarUnidadPeso(unidadContraria());
             toast(`⚖️ Pesos en ${pesoActual()}`);
@@ -126,6 +128,7 @@ export class VistaLista extends ItemView {
         // Acciones visibles dentro del panel (además de los iconos de cabecera)
         const filaAcciones = el("div", "gym-botones");
         filaAcciones.appendChild(btn("＋ Nueva rutina", "primario", () => void abrirFormulario({ modo: "crear" })));
+        filaAcciones.appendChild(btn("⏱ Temporizador", "", () => abrirTemporizador()));
         filaAcciones.appendChild(btn("⚖️ Registrar medidas", "", () => void this.abrirMedidas()));
         filaAcciones.appendChild(btn("🗂 Ejercicios", "", () => gestionarEjercicios()));
         c.appendChild(filaAcciones);

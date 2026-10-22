@@ -455,3 +455,45 @@ table.gym-tabla td { border-bottom:1px solid var(--background-modifier-border); 
 
 /* ── Hoja superpuesta: el título ocupa el hueco de la izquierda ─────────── */
 .gym-hoja-tit { flex: 1; min-width: 0; }
+
+/* ── Temporizador libre (modal con anillo, presets y controles) ─────────── */
+/* Modal más estrecho que el genérico: es una columna, no una tabla. */
+.gym-temp-caja { width: min(430px, 94vw); }
+.gym-temp-anillo { position: relative; width: min(240px, 58vw); aspect-ratio: 1; margin: 6px auto 10px; }
+.gym-temp-anillo svg { width: 100%; height: 100%; display: block; }
+.gym-temp-anillo .pista { fill: none; stroke: color-mix(in srgb, var(--text-faint) 45%, transparent); stroke-width: 7; }
+.gym-temp-anillo .barra {
+    fill: none; stroke: #F99624; stroke-width: 7; stroke-linecap: round;
+    transition: stroke-dashoffset .25s linear, stroke .3s;
+}
+.gym-temp-anillo.pausa .barra { stroke: var(--text-faint); }
+.gym-temp-anillo.listo .barra { stroke: #2ecc71; }
+.gym-temp-cen {
+    position: absolute; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 2px; text-align: center; padding: 10px;
+}
+.gym-temp-t {
+    font-size: 2.6em; font-weight: 800; font-variant-numeric: tabular-nums;
+    color: #F99624; line-height: 1.05;
+}
+.gym-temp-anillo.pausa .gym-temp-t { color: var(--text-faint); }
+.gym-temp-anillo.listo .gym-temp-t { color: #2ecc71; font-size: 1.6em; }
+.gym-temp-sub { font-size: .76em; opacity: .7; }
+.gym-temp-estado {
+    display: block; text-align: center; font-size: .8em; font-weight: 700;
+    letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 10px;
+}
+.gym-temp-estado.on { color: #F99624; }
+.gym-temp-estado.listo { color: #2ecc71; }
+.gym-temp-tit { margin-top: 12px; }
+.gym-temp-presets { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.gym-temp-chip { min-height: 42px; padding: 8px 14px; font-size: .88em; cursor: pointer; }
+.gym-temp-ajuste { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; }
+.gym-temp-campo { flex: 1 1 84px; display: flex; flex-direction: column; gap: 3px; }
+.gym-temp-campo .gym-et { text-align: center; margin-bottom: 0; }
+/* (0,2,1): empata con .gym-modal input[type=number] y va después en el
+   fichero → gana, sin necesidad de !important. */
+.gym-temp-caja .gym-temp-campo input { min-height: 46px; text-align: center; font-size: 1em; }
+.gym-temp-empezar { flex: 1 1 100%; min-height: 46px; }
+.gym-temp-controles { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-top: 14px; }
+.gym-temp-controles .gym-btn-g { flex: 1 1 auto; min-width: 96px; }

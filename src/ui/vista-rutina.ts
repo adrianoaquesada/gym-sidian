@@ -11,6 +11,7 @@ import { leerRutina, rutaDatosDe } from "../datos";
 import { fijarUnidadPeso, pesoActual, unidadContraria } from "../unidades";
 import { pintarDashboard } from "./gestor";
 import { toast } from "./componentes";
+import { abrirTemporizador } from "./temporizador";
 import { VISTA_RUTINA, abrirComoMarkdown, abrirFormulario, abrirLista } from "./vistas";
 
 interface EstadoRutinaAbierta { [k: string]: unknown; rutinaId?: string | null; }
@@ -58,6 +59,7 @@ export class VistaRutina extends ItemView {
             if (this.rutinaId) void abrirFormulario({ modo: "editar", rutinaId: this.rutinaId });
         });
         this.addAction("refresh-cw", "Recargar", () => void this.pintar());
+        this.addAction("timer", "⏱ Temporizador libre (cuenta atrás)", () => abrirTemporizador());
         this.addAction("arrow-left-right", "Alternar pesos kg ↔ libras", () => {
             fijarUnidadPeso(unidadContraria());
             toast(`⚖️ Pesos en ${pesoActual()}`);

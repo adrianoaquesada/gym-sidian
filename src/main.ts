@@ -19,6 +19,7 @@ import { MarkdownView, Plugin, type WorkspaceLeaf } from "obsidian";
 import { normalizarAjustes, type AjustesGym } from "./ajustes";
 import { iniciarEstado, actualizarAjustes } from "./estado";
 import { limpiarOverlays, toast } from "./ui/componentes";
+import { abrirTemporizador, pararTemporizador } from "./ui/temporizador";
 import { GymStoneTab } from "./ui/tabla-ajustes";
 import { VistaLista } from "./ui/vista-lista";
 import { VistaRutina } from "./ui/vista-rutina";
@@ -74,6 +75,11 @@ export default class GymStone extends Plugin {
             name: "Crear nueva rutina",
             callback: () => void abrirFormulario({ modo: "crear" }),
         });
+        this.addCommand({
+            id: "temporizador",
+            name: "Abrir el temporizador (cuenta atrás libre)",
+            callback: () => abrirTemporizador(),
+        });
 
         this.addSettingTab(new GymStoneTab(this.app, this));
 
@@ -111,6 +117,7 @@ export default class GymStone extends Plugin {
     }
 
     onunload(): void {
+        pararTemporizador();   // el intervalo del temporizador libre no debe sobrevivir
         limpiarOverlays();
     }
 
