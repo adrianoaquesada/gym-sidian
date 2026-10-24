@@ -25,12 +25,21 @@ export interface AjustesGym {
     carpetaRaiz: string;      // carpeta única que contiene todo lo de arriba
     unidadTalla: "cm" | "in";
     avisoListo: boolean;      // ya se mostró el aviso de bienvenida
+    mantenerDespierta: boolean;   // pantalla encendida mientras corre un temporizador
+    sonidoTemporizador: boolean;  // pitido al terminar la cuenta atrás del ⏱
+    sonidoDescanso: boolean;      // pitido al terminar el descanso de la sesión guiada
+    volumenSonido: number;        // intensidad del pitido, en % (0–100): COMÚN a ambos
 }
 
 export const AJUSTES_POR_DEFECTO: AjustesGym = {
     carpetaRaiz: "gym-stone",
     unidadTalla: "cm",
     avisoListo: false,
+    mantenerDespierta: true,
+    sonidoTemporizador: true,
+    sonidoDescanso: true,
+    // 30 % ≈ la ganancia 0.28 fija que tenía el pitido antes de parametrizarlo
+    volumenSonido: 30,
 };
 
 /* La raíz siempre en minúsculas y sin barras sueltas en los extremos: los
@@ -55,6 +64,19 @@ export function normalizarAjustes(
         out.carpetaRaiz = carpetaRaizLimpia(d.carpetaRaiz);
         if (d.unidadTalla === "cm" || d.unidadTalla === "in") out.unidadTalla = d.unidadTalla;
         out.avisoListo = d.avisoListo === true;
+        // true salvo que se haya apagado EXPLÍCITAMENTE (los ajustes viejos,
+        // sin el campo, siguen con el comportamiento de siempre: encendido)
+        out.mantenerDespierta = d.mantenerDespierta !== false;
+        // El sonido del ⏱: igual de «explícito» que mantenerDespierta
+        out.sonidoTemporizador = d.sonidoTemporizador !== false;
+        // Y el del descanso de la sesión guiada (los ajustes viejos, sin el
+        // campo, siguen sonando como siempre)
+        out.sonidoDescanso = d.sonidoDescanso !== false;
+        // Volumen en % (0–100); lo que no sea número válido → el de por defecto
+        const vol = Number(d.volumenSonido);
+        out.volumenSonido = Number.isFinite(vol)
+            ? Math.min(100, Math.max(0, Math.round(vol)))
+            : AJUSTES_POR_DEFECTO.volumenSonido;
     }
     return out;
 }

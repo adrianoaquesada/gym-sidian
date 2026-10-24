@@ -17,7 +17,7 @@ import { CONFIG, DIAS_LARGO } from "../config";
 import { rutaMedidas } from "../ajustes";
 import {
     catalogoEjercicios, escribirRutina, esLibre,
-    leerMedidas, leerRutina, medidasVacias, resumenLibre, semanaActual,
+    leerMedidas, leerRutina, medidasVacias, resumenLibre, rutaDatosDe, semanaActual,
     semanasTotales, transcurrida,
 } from "../datos";
 import { fechaLegible, hoy, msgError, sumarDias } from "../util";
@@ -38,15 +38,30 @@ import { seccionHistorial } from "./historial";
 
 /* ══════════════════ Punto de entrada ══════════════════ */
 
-/* Dibuja el dashboard de una rutina dentro del contenedor de su pestaña.
-   La vista (ui/vista-rutina.ts) se encarga de la cabecera y de reabrirlo. */
-export const pintarDashboard = async (cont: HTMLElement, rutinaId: string): Promise<void> => {
-    cont.innerHTML = "";
+export interface OpcionesDashboard {
+    /* La rutina ya leída por quien la monta (la pestaña la lee una sola vez
+       para el rótulo): si viene, no se vuelve a tocar el archivo */
+    rutina?: Rutina;
+    /* Repintado de la pantalla entera. La pestaña (ui/vista-app.ts) dibuja en
+       un contenedor temporal y luego lo monta, así que el repintado lo debe
+       dirigir ella y no este módulo */
+    alRepintar?: Pintar;
+}
 
-    const r = await leerRutina(rutinaId);
-    if (r.error) return pintarError(cont, r.error);
-    const rutina = r.datos!;
-    if (!rutina?.id) return pintarError(cont, `El archivo ${r.ruta} no tiene una rutina dentro.`);
+/* Dibuja el dashboard de una rutina dentro del contenedor que le da la
+   pestaña que la aloja. */
+export const pintarDashboard = async (
+    cont: HTMLElement, rutinaId: string, ops: OpcionesDashboard = {},
+): Promise<void> => {
+    cont.empty();
+
+    let rutina = ops.rutina;
+    if (!rutina) {
+        const r = await leerRutina(rutinaId);
+        if (r.error) return pintarError(cont, r.error);
+        rutina = r.datos;
+    }
+    if (!rutina?.id) return pintarError(cont, `El archivo ${rutaDatosDe(rutinaId)} no tiene una rutina dentro.`);
 
     let medidas: LecturaNota<MedidasDatos> = await leerMedidas();
     if (medidas.error) {
@@ -67,7 +82,7 @@ export const pintarDashboard = async (cont: HTMLElement, rutinaId: string): Prom
             `${fechaLegible(rutina.inicio)} → ${fechaLegible(rutina.fin)}`,
     });
 
-    const pintar = () => pintarDashboard(cont, rutinaId);
+    const pintar: Pintar = () => (ops.alRepintar ? ops.alRepintar() : pintarDashboard(cont, rutinaId));
 
     // Carrusel de navegación de la rutina (una línea, sin barra de
     // desplazamiento): volver, editar, la sesión guiada del día y los botones

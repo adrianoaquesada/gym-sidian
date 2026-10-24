@@ -2,10 +2,10 @@
    Unidades (kg | lb  y  cm | in).
 
    En el archivo SIEMPRE se guarda kg y cm; aquí se decide en qué unidad se
-   MUESTRA y se TECLREA. El selector kg | lb lo cambia en caliente y se
-   recuerda en el almacenamiento propio del vault (si no, volvería a kg al
-   reabrir la nota). La unidad de talla es un ajuste del plugin
-   (Ajustes → Gym Stone).
+   MUESTRA y se TECLREA. La unidad de peso lo cambian en caliente el selector
+   kg | lb, el menú ⋮ y Ajustes → Gym Stone (mismo fijarUnidadPeso para los
+   tres) y se recuerda en el almacenamiento propio del vault (si no, volvería
+   a kg al reabrir la nota). La de talla es solo un ajuste del plugin.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 import { CONFIG } from "./config";

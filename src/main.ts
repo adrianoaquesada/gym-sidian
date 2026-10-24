@@ -3,8 +3,8 @@
 
    Sistema de rutinas de gimnasio a pantalla completa: el plugin vive en
    pestañas propias (tipo Kanban), no dentro de notas. Navegación en una sola
-   pestaña: lista «Rutinas» ⇄ ficha de la rutina; crear/editar en hoja
-   superpuesta.
+   pestaña y en la misma vista: Main ⇄ ficha de la rutina; crear/editar en
+   hoja superpuesta.
 
    Dónde están los datos (notas .md con bloques ```json```: legibles a mano,
    git-friendly; el motor avisa y no sobrescribe si alguien lo rompe): todo
@@ -22,16 +22,17 @@
 
 import { MarkdownView, Plugin, type EventRef, type Menu, type WorkspaceLeaf } from "obsidian";
 import { normalizarAjustes, rutaIndice, type AjustesGym } from "./ajustes";
+import { reiniciarDespierta } from "./despierta";
 import { iniciarEstado, actualizarAjustes } from "./estado";
 import { limpiarOverlays, toast } from "./ui/componentes";
 import { abrirTemporizador, pararTemporizador } from "./ui/temporizador";
+import { cerrarSesionesAbiertas } from "./ui/sesion-guiada";
 import { GymStoneTab } from "./ui/tabla-ajustes";
-import { VistaLista } from "./ui/vista-lista";
-import { VistaRutina } from "./ui/vista-rutina";
+import { VistaApp, VistaLista, VistaRutina } from "./ui/vista-app";
 import { VistaForm } from "./ui/vista-form";
 import { fijarUnidadPeso, pesoActual, unidadContraria } from "./unidades";
 import {
-    VISTA_FORM, VISTA_LISTA, VISTA_RUTINA,
+    VISTA_APP, VISTA_FORM, VISTA_LISTA, VISTA_RUTINA,
     abrirArchivoComoPlugin, abrirFormulario, abrirLista, abrirComoMarkdown,
     esArchivoGym, esMdRecienteDelPlugin,
 } from "./ui/vistas";
@@ -51,7 +52,10 @@ export default class GymStone extends Plugin {
         this.ajustes = normalizarAjustes(((await this.loadData()) ?? {}) as Record<string, unknown>);
         iniciarEstado(this.app, this.ajustes);
 
-        /* ── Las pantallas del plugin ── */
+        /* ── Las pantallas del plugin: UNA vista para Main y la ficha de una
+              rutina (la navegación entre las dos no remonta la pestaña) ── */
+        this.registerView(VISTA_APP, leaf => new VistaApp(leaf));
+        // Tipos antiguos: solo para restaurar pestañas de versiones previas
         this.registerView(VISTA_LISTA, leaf => new VistaLista(leaf));
         this.registerView(VISTA_RUTINA, leaf => new VistaRutina(leaf));
         this.registerView(VISTA_FORM, leaf => new VistaForm(leaf));   // legado
@@ -84,7 +88,7 @@ export default class GymStone extends Plugin {
         this.registerEvent(
             (this.app.workspace as unknown as WorkspaceConLeafMenu).on("leaf-menu", (menu, leaf) => {
                 const v = leaf.view;
-                if (!(v instanceof VistaLista || v instanceof VistaRutina)) return;
+                if (!(v instanceof VistaApp)) return;
                 menu.addItem(it => it
                     .setTitle("Alternar pesos kg ↔ libras")
                     .setIcon("arrow-left-right")
@@ -96,7 +100,7 @@ export default class GymStone extends Plugin {
                 const ruta = v.rutaMarkdown();
                 if (ruta) {
                     menu.addItem(it => it
-                        .setTitle("Abrir como markdown")
+                        .setTitle("Abrir como Markdown")
                         .setIcon("file-text")
                         .onClick(() => abrirComoMarkdown(ruta)));
                 }
@@ -156,7 +160,9 @@ export default class GymStone extends Plugin {
     }
 
     onunload(): void {
+        cerrarSesionesAbiertas(); // una sesión guiada abierta retira su intervalo, su teclado y su candado
         pararTemporizador();   // el intervalo del temporizador libre no debe sobrevivir
+        reiniciarDespierta();  // ni ningún candado de pantalla encendida
         limpiarOverlays();
     }
 
@@ -170,7 +176,7 @@ export default class GymStone extends Plugin {
 
     // Tras cambiar rutas o unidades, las pestañas abiertas se repintan
     repintarVistasGym(): void {
-        for (const tipo of [VISTA_LISTA, VISTA_RUTINA]) {
+        for (const tipo of [VISTA_APP, VISTA_LISTA, VISTA_RUTINA]) {
             for (const hoja of this.app.workspace.getLeavesOfType(tipo)) {
                 const vista = hoja.view as unknown as { pintar?: () => Promise<void> };
                 if (typeof vista?.pintar === "function") void vista.pintar();

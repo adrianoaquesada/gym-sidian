@@ -232,6 +232,9 @@ table.gym-tabla td { border-bottom:1px solid var(--background-modifier-border); 
     overflow-y: auto;
     overflow-x: hidden;   /* en móvil ningún texto debe sacar la pestaña de su ancho */
     max-width: none;
+    /* La barra de scroll vertical ocupa su hueco aunque no haya scroll: si no,
+       al aparecer o desaparecer desplaza TODO el contenido hacia la izquierda */
+    scrollbar-gutter: stable;
 }
 .gym-vista .gym-g, .gym-vista .gym-form { max-width: none; }
 
@@ -315,7 +318,11 @@ table.gym-tabla td { border-bottom:1px solid var(--background-modifier-border); 
 }
 .gym-nav-btn:hover { filter: brightness(1.06); }
 .gym-nav-btn.primario { background: #F99624; border-color: #F99624; color: #101010; font-weight: 800; }
-.gym-nav-btn.activo { background: #F99624; border-color: #F99624; color: #101010; font-weight: 800; }
+/* .activo marca la sección en pantalla con el MISMO reparto que el resto (sin
+   subir el peso de la letra): con 800 el botón se ensancha y todos los de su
+   derecha dan un salto lateral cada vez que se cambia de sección. El relleno
+   naranja ya lo distingue. */
+.gym-nav-btn.activo { background: #F99624; border-color: #F99624; color: #101010; }
 /* Separador elástico: empuja a la derecha lo que venga detrás (p. ej. el
    temporizador del dashboard de una rutina) cuando aún cabe en pantalla */
 .gym-nav-espacio { flex: 1 0 auto; }

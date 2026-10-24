@@ -91,7 +91,7 @@ export function seccionHistorial(c: HTMLElement, rutina: Rutina): void {
     c3.appendChild(contTabla);
 
     const pintar = () => {
-        contTabla.innerHTML = "";
+        contTabla.empty();
         let filas: FilaHistorial[] = [];
         for (const s of rutina.sesiones ?? []) {
             if (!esFechaValida(s.fecha)) continue;

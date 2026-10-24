@@ -4,30 +4,43 @@ Plugin de Obsidian con el **sistema de rutinas de gimnasio**: creas una rutina, 
 medidas y anotaciones, y ves el progreso en un calendario mensual y unas estadísticas (mismo look
 que el panel de trading).
 
-## Instalar
+## Instalación (Installation)
 
-**Desde la lista de plugins de la comunidad** (cuando esté publicado): Ajustes → Comunidad de
-plugins → Explorar → busca «Gym Stone», o pulsa este enlace:
-[obsidian://show-plugin?id=gym-stone](obsidian://show-plugin?id=gym-stone).
-Funciona en **escritorio y móvil**.
+Funciona en **escritorio y móvil**. Dos formas de instalarlo:
 
-**Instalación manual** (o mientras tanto, desde la última release de GitHub): descarga de la
-[última release](https://github.com/adrianoaquesada/gym-stone/releases/latest) los tres
-archivos — `main.js`, `manifest.json` y `styles.css` — y colócalos en
+**Opción A · Desde la lista de plugins de la comunidad** (cuando esté publicado):
 
-```
-<tu-vault>/.obsidian/plugins/gym-stone/
-```
+1. Abre **Ajustes → Comunidad de plugins → Explorar**.
+2. Busca «Gym Stone» o pulsa este enlace:
+   [obsidian://show-plugin?id=gym-stone](obsidian://show-plugin?id=gym-stone).
+3. Pulsa **Instalar** y después **Habilitar**.
 
-Después: Ajustes → Comunidad de plugins → plugins sin verificar → activa **Gym Stone**.
+**Opción B · Instalación manual** (o mientras tanto, desde la última release de GitHub):
 
-## Uso
+1. Descarga de la [última release](https://github.com/adrianoaquesada/gym-stone/releases/latest)
+   los tres archivos: `main.js`, `manifest.json` y `styles.css`.
+2. Colócalos dentro de tu vault, en
 
-Abre el plugin con la **campana de mancuerna** (barra lateral izquierda) o con el comando
-«Abrir la lista de rutinas». **Toda la navegación ocurre en una sola pestaña** (se cambia de
-pantalla dentro de ella, nunca se abren pestañas de más), con un **carrusel de pestañas** bajo
-la cabecera naranja: una sola línea que se recorre deslizando, **sin barra de desplazamiento
-visible**:
+   ```
+   <tu-vault>/.obsidian/plugins/gym-stone/
+   ```
+
+3. Abre **Ajustes → Comunidad de plugins → plugins sin verificar** y activa **Gym Stone**.
+
+## Uso (Usage)
+
+**En corto (basic usage)**: abre el plugin con la **campana de mancuerna** (barra lateral
+izquierda) o con el comando «Abrir la lista de rutinas» → **＋ Nueva rutina** para crear la
+primera → **🎯** en su fila para empezar la **sesión guiada** y registrar series con sus
+descansos. El progreso se guarda solo, en notas `.md` de tu vault.
+
+**Toda la navegación ocurre en una sola pestaña** (se cambia de
+pantalla dentro de ella, nunca se abren pestañas de más), y Main ⇄ la ficha de una rutina
+cambia **en la misma vista, sin remontar la pestaña**: mientras se leen los datos sigue
+visible lo anterior (nunca un destello en blanco) y el scroll solo se reinicia al cambiar de
+pantalla. La navegación no toca archivos: los `.md` son solo consulta y guardado. Hay un
+**carrusel de pestañas** bajo la cabecera naranja: una sola línea que se recorre deslizando,
+**sin barra de desplazamiento visible**:
 
 - **📋 Main**: tres secciones a pantalla completa que se cambian desde el carrusel, y **📋
   Rutinas es la que sale por defecto**. Ahí están el índice de todas las rutinas (estado,
@@ -57,13 +70,28 @@ visible**:
 
 La **cabecera naranja** muestra el título («🏋️ Main» en la lista; el nombre y las fechas de
 la rutina en su ficha), y el menú **⋮** de arriba a la derecha lleva **«Alternar pesos
-kg ↔ libras»** y **«Abrir como markdown»** para cualquier pestaña del plugin.
+kg ↔ libras»** y **«Abrir como Markdown»** para cualquier pestaña del plugin.
 
 **Abrir los archivos del plugin es abrir el plugin**: si abres
 `gym-stone/rutinas.gym-stone.md` o un archivo de `gym-stone/datos/rutinas/`, esa pestaña pasa
 a la vista del plugin, y el icono 🏋️ de la esquina superior de la nota la vuelve a mostrar
 como markdown crudo. No hay frontmatter ni notas-dashboard: los datos son JSON puro en notas
 `.md` legibles, y el plugin es el dueño de sus archivos.
+
+**La pantalla no se apaga sola entre series**: mientras corre un temporizador —el ⏱ libre o la
+sesión guiada en marcha (cronómetro y descanso)— el plugin mantiene la pantalla encendida con la
+*Screen Wake Lock API* del sistema (Android e iOS ≥ 18.4; en escritorio no hace falta). Al
+pausar o parar se suelta, y el interruptor **Ajustes → Gym Stone → Mantener la pantalla
+encendida** lo apaga por completo (viene activado).
+
+**Los pitidos del plugin son ajustables**: al terminar la cuenta atrás del ⏱ libre y al
+terminar un descanso de la sesión guiada suena un pitido de tres notas sintetizado con la
+Web Audio API (no hay archivos de audio) y el móvil vibra, y en **Ajustes → Gym Stone** se
+gestiona con cuatro controles: **Sonido del temporizador** y **Sonido del descanso** (los
+interruptores de cada aviso), **Volumen del sonido** (deslizador 0–100 %, común a los dos) y
+el botón **🔊 Probar**, que suena con el volumen vigente para calibrarlo (ignora los
+interruptores). Apagados los sonidos siguen los avisos visuales —«⏰ ¡Tiempo!» y «¡Listo!»—
+y la vibración del móvil; «⏭ Saltar descanso» no suena nunca.
 
 ## Dónde viven los datos
 
@@ -85,7 +113,10 @@ abriendo como nota.
 El índice se regenera solo cada vez que se guarda una rutina, así que aunque lo edites a mano
 (o lo borres) se repone con lo último en disco. La carpeta raíz es un **ajuste del plugin**
 (Ajustes → Gym Stone → Carpeta raíz). El peso se guarda siempre en kg y la talla en cm: la
-unidad que muestras (kg | lb, cm | in) es solo de pantalla y se teclea en esa unidad. Antes de
+unidad que muestras (kg | lb, cm | in) es solo de pantalla y se teclea en esa unidad. La de
+peso se cambia desde **Ajustes → Gym Stone → Unidad de peso**, desde el selector **kg | lb**
+del propio panel o con **«Alternar pesos kg ↔ libras»** del menú ⋮ (es lo mismo en los tres
+sitios y se recuerda por vault); la de talla, desde **Unidad de talla** en Ajustes. Antes de
 sobrescribir un archivo de datos se guarda su copia previa en `<archivo>.bak`; si un JSON está
 roto, el motor avisa y **no** sobrescribe.
 

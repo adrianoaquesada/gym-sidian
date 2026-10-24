@@ -89,7 +89,7 @@ export function seccionCalendario(c: HTMLElement, rutina: Rutina, pintar: Pintar
         btnSig.disabled = indiceMes >= mesMax;
         [btnAnt, btnSig].forEach(b => b.style.opacity = b.disabled ? "0.35" : "1");
 
-        cajaMes.innerHTML = "";
+        cajaMes.empty();
 
         // Días programados y sesiones del mes
         const primerDia = `${anyo}-${dos(mes + 1)}-01`;
@@ -563,7 +563,7 @@ export function detalleDia(rutina: Rutina, fecha: string, pintar: Pintar): void 
     m.caja.appendChild(cajaD);
 
     const rePintar = (): void => {
-        cajaD.innerHTML = "";
+        cajaD.empty();
         const sesiones = sesionesEn(rutina, fecha);
         const anotaciones = (rutina.notasDia ?? []).filter(n => n.fecha === fecha);
         const prog = diaProgramado(rutina, fecha);

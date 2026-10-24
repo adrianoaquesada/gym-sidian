@@ -2,8 +2,9 @@
    Las pantallas del plugin y la navegación ENTRE ELLAS.
 
    Todo ocurre en UNA sola pestaña (igual que Bases): abrir una rutina o
-   editarla nunca abre pestañas nuevas. Lista «Rutinas» ⇄ ficha de la rutina;
-   crear/editar en HOJA superpuesta (ui/hoja.ts), no en una pantalla propia.
+   editarla nunca abre pestañas nuevas. Main ⇄ ficha de la rutina son dos
+   pantallas de UNA misma vista (ui/vista-app.ts), y crear/editar se hace en
+   HOJA superpuesta (ui/hoja.ts), no en una pantalla propia.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 import type { WorkspaceLeaf } from "obsidian";
@@ -12,39 +13,44 @@ import { carpetaDatos, rutaIndice, SUFIJO_MD } from "../ajustes";
 import { toast } from "./componentes";
 import { hojaFormulario } from "./hoja";
 
-export const VISTA_LISTA = "gym-stone-lista";
-export const VISTA_RUTINA = "gym-stone-rutina";
+export const VISTA_APP = "gym-stone-app";   // la pestaña entera: Main ⇄ ficha de rutina
+export const VISTA_LISTA = "gym-stone-lista";   // legado: pestaña de versiones previas
+export const VISTA_RUTINA = "gym-stone-rutina"; // legado: idem, ya en la ficha
 export const VISTA_FORM = "gym-stone-form";      // legado: ya no se navega a ella
 export const VISTA_MAESTRO = "gym-stone-maestro"; // legado: hojas de la variante «f» (retirada)
 
-const TODOS_LOS_TIPOS = [VISTA_LISTA, VISTA_RUTINA, VISTA_FORM, VISTA_MAESTRO];
+const TODOS_LOS_TIPOS = [VISTA_APP, VISTA_LISTA, VISTA_RUTINA, VISTA_FORM, VISTA_MAESTRO];
 
 interface EstadoVista {
     [k: string]: unknown;
-    modo?: "crear" | "editar";
+    pantalla?: "lista" | "rutina";
     rutinaId?: string | null;
 }
 
-/* Cambia la pantalla de la pestaña única del plugin (creándola si no existe).
+/* Cambia de pantalla DENTRO de la pestaña del plugin (creándola si no existe).
+   El tipo siempre es VISTA_APP: así Main y la ficha de una rutina son la MISMA
+   vista (solo cambia su estado) y no se destruye ni se remonta nada — que era
+   el salto visual que se notaba al entrar en una rutina. La navegación no
+   toca ningún archivo: los .md siguen siendo solo consulta y guardado.
    Si quedara más de una hoja de estas (de una versión anterior), se cierran
    las de sobra para que la navegación siempre sea en la misma. */
-const navegar = async (type: string, estado: EstadoVista): Promise<void> => {
+const navegar = async (estado: EstadoVista): Promise<void> => {
     const ws = aplicacion().workspace;
     const hojas = TODOS_LOS_TIPOS.flatMap(t => ws.getLeavesOfType(t));
     const hoja = hojas[0] ?? ws.getLeaf("tab");
     for (const extra of hojas.slice(1)) extra.detach();
-    await hoja.setViewState({ type, active: true, state: estado });
+    await hoja.setViewState({ type: VISTA_APP, active: true, state: estado });
     void ws.revealLeaf(hoja);
 };
 
 /* La lista inicial (el índice) */
 export const abrirLista = async (): Promise<void> => {
-    await navegar(VISTA_LISTA, {});
+    await navegar({ pantalla: "lista" });
 };
 
 /* La dashboard de una rutina */
 export const abrirRutina = async (rutinaId: string): Promise<void> => {
-    await navegar(VISTA_RUTINA, { rutinaId });
+    await navegar({ pantalla: "rutina", rutinaId });
 };
 
 /* Crear o editar: en hoja superpuesta sobre la pantalla actual (Esc la cierra
@@ -88,10 +94,10 @@ export const esMdRecienteDelPlugin = (ruta: string): boolean => {
 };
 
 /* Convierte UNA pestaña (donde se abrió un archivo del plugin) en la vista
-   del plugin de ese archivo: índice → lista; rutina → su dashboard. */
+   del plugin de ese archivo: índice → Main; rutina → su dashboard. */
 export const abrirArchivoComoPlugin = async (leaf: WorkspaceLeaf, ruta: string): Promise<boolean> => {
     if (ruta === rutaIndice()) {
-        await leaf.setViewState({ type: VISTA_LISTA, active: true, state: {} });
+        await leaf.setViewState({ type: VISTA_APP, active: true, state: { pantalla: "lista" } });
         void aplicacion().workspace.revealLeaf(leaf);
         return true;
     }
@@ -99,7 +105,7 @@ export const abrirArchivoComoPlugin = async (leaf: WorkspaceLeaf, ruta: string):
         // El id es el nombre SIN el sufijo: <id>.gym-stone.md → <id>
         const id = ruta.slice(ruta.lastIndexOf("/") + 1, -SUFIJO_MD.length);
         if (!id) return false;
-        await leaf.setViewState({ type: VISTA_RUTINA, active: true, state: { rutinaId: id } });
+        await leaf.setViewState({ type: VISTA_APP, active: true, state: { pantalla: "rutina", rutinaId: id } });
         void aplicacion().workspace.revealLeaf(leaf);
         return true;
     }

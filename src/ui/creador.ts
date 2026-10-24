@@ -56,7 +56,7 @@ interface OpcionesMontar {
 }
 
 export const montar = async ({ cont, inicial, esEdicion, onGuardado, enHoja = false }: OpcionesMontar): Promise<void> => {
-    cont.innerHTML = "";
+    cont.empty();
     const claveEstado = esEdicion ? `edit:${inicial?.id ?? ""}` : "crear";
     let estado = almacen[claveEstado];
 
@@ -136,7 +136,7 @@ export const montar = async ({ cont, inicial, esEdicion, onGuardado, enHoja = fa
     };
     const filaTipo = el("div", "gym-dias-semana");
     const pintarTipo = () => {
-        filaTipo.innerHTML = "";
+        filaTipo.empty();
         const ayudaTipo: Record<string, string> = {
             planificada: "Días de la semana con sus ejercicios y objetivos: el plan te dice qué hacer cada día.",
             libre: "Sin días ni ejercicios fijos: cada día anotas lo que has hecho de verdad (ejercicio, peso y reps).",
@@ -253,7 +253,7 @@ export const montar = async ({ cont, inicial, esEdicion, onGuardado, enHoja = fa
     // ── Objetivo ──
     const filaObj = el("div", "gym-dias-semana");
     const pintarObjetivos = () => {
-        filaObj.innerHTML = "";
+        filaObj.empty();
         const extra = estado.objetivo && !CONFIG.OBJETIVOS.includes(estado.objetivo) ? [estado.objetivo] : [];
         for (const o of [...CONFIG.OBJETIVOS, ...extra]) {
             const b = el("button", "gym-chip" + (estado.objetivo === o ? " on" : ""), o);
@@ -274,7 +274,7 @@ export const montar = async ({ cont, inicial, esEdicion, onGuardado, enHoja = fa
             { v: "finalizada", txt: "🏁 Finalizada" },
         ];
         const pintarEstado = () => {
-            filaEst.innerHTML = "";
+            filaEst.empty();
             for (const e of estados) {
                 const b = el("button", "gym-chip" + (estado.estadoRutina === e.v ? " on" : ""), e.txt);
                 b.type = "button";
@@ -329,7 +329,7 @@ export const montar = async ({ cont, inicial, esEdicion, onGuardado, enHoja = fa
     }
 
     const repintar = (): void => {
-        contDias.innerHTML = "";
+        contDias.empty();
         estado.dias.forEach((dia, i) => contDias.appendChild(tarjetaDia(dia, i)));
         const btnMas = el("button", "gym-chip gym-mt4", "＋ Añadir día");
         btnMas.type = "button";
@@ -357,7 +357,7 @@ export const montar = async ({ cont, inicial, esEdicion, onGuardado, enHoja = fa
 
         const semana = el("div", "gym-dias-semana");
         const pintarSemana = () => {
-            semana.innerHTML = "";
+            semana.empty();
             DIAS.forEach((d, idx) => {
                 const n = idx + 1;
                 const activo = (dia.diasSemana ?? []).includes(n);
@@ -464,7 +464,7 @@ export const montar = async ({ cont, inicial, esEdicion, onGuardado, enHoja = fa
         };
 
         const pintarEjercicios = () => {
-            contEj.innerHTML = "";
+            contEj.empty();
             if (!dia.ejercicios.length) contEj.appendChild(el("div", "gym-ayuda", "Sin ejercicios todavía."));
             dia.ejercicios.forEach(ej => contEj.appendChild(filaEjercicio(ej)));
             const b = el("button", "gym-chip", "＋ Añadir ejercicio");

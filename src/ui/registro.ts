@@ -24,7 +24,7 @@ import {
     totalSeries, ultimaMedida, ultimosValores, volumenEjercicio, volumenSesion,
 } from "../datos";
 import { aNumero, clonarJSON, decimal, esFechaValida, fechaLegible, hoy, horaAhora, msgError } from "../util";
-import { pesoACampo, pesoActual, pesoAKg, pesoTexto, tallaTexto } from "../unidades";
+import { pesoACampo, pesoActual, pesoAKg, pesoTexto } from "../unidades";
 import type {
     EjercicioDef, EjercicioSesion, LecturaNota, Medida, MedidasDatos,
     Rutina, SerieSesion, Sesion,
@@ -198,7 +198,7 @@ export function formularioSesion(
         for (const [id, previo] of previos) if (!definidos.some(e => e.id === id)) datos.ejercicios.push(previo);
 
         volEls.clear();   // los bloques se crean de nuevo: sus chips también
-        contEjercicios.innerHTML = "";
+        contEjercicios.empty();
         datos.ejercicios.forEach(ej => contEjercicios.appendChild(bloqueEjercicio(ej, definidos)));
         if (!datos.ejercicios.length) {
             contEjercicios.appendChild(el("div", "opacity:.65;font-size:.88em;padding:6px 0;",
@@ -394,7 +394,7 @@ export function formularioSesion(
         const lista = el("div");
         box.appendChild(lista);
         const pintarSeries = (): void => {
-            lista.innerHTML = "";
+            lista.empty();
             ej.series.forEach((s, i) => {
                 const saltada = esSaltada(s);
                 const f = el("div", "gym-serie" + (saltada ? " saltada" : ""));

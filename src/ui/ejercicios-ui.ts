@@ -213,7 +213,7 @@ export const elegirEjercicio = (
             .sort((a, b) => a.localeCompare(b, "es"));
         const sinGrupo = catalogo.filter(x => !grupoDe(x.id)).length;
         if (grupoActivo && !enUso.includes(grupoActivo)) grupoActivo = "";   // el grupo dejó de existir
-        cajaGrupos.innerHTML = "";
+        cajaGrupos.empty();
         if (enUso.length || sinGrupo) {
             const chip = (texto: string, valor: string, especial = ""): void => {
                 const activo = especial === "sin" ? soloSinGrupo : !soloSinGrupo && grupoActivo === valor;
@@ -235,7 +235,7 @@ export const elegirEjercicio = (
             (!soloSinGrupo || !grupoDe(x.id)) &&
             (!q || norm(x.nombre).includes(q) || norm(grupoDe(x.id)).includes(q)));
 
-        lista.innerHTML = "";
+        lista.empty();
         if (!visibles.length) {
             lista.appendChild(el("div", "padding:12px;opacity:.65;font-size:.86em;",
                 q || grupoActivo
@@ -408,7 +408,7 @@ export const pintarGestionEjercicios = (cont: HTMLElement): void => {
         // Sugerencias del datalist: los grupos ya usados (memoria + catálogo)
         const sugeridos = new Set<string>(Object.values(gruposEnMemoria()));
         for (const e of cat) if (e.grupo) sugeridos.add(e.grupo);
-        dl.innerHTML = "";
+        dl.empty();
         for (const g of [...sugeridos].sort((a, b) => a.localeCompare(b, "es"))) {
             const o = createEl("option"); o.value = g;
             dl.appendChild(o);
@@ -426,7 +426,7 @@ export const pintarGestionEjercicios = (cont: HTMLElement): void => {
         // La búsqueda alcanza también el grupo, igual que en el buscador de sesión
         const visibles = cat.filter(x => !q || norm(x.nombre).includes(q) || norm(x.grupo).includes(q));
 
-        lista.innerHTML = "";
+        lista.empty();
         if (cargando) {
             lista.appendChild(el("div", "padding:12px;opacity:.65;font-size:.86em;",
                 "Leyendo todas las rutinas y plantillas…"));

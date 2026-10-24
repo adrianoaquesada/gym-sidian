@@ -13,14 +13,19 @@
 
    El estado vive en el MÓDULO, no en el modal: se puede cerrar la ventana y
    la cuenta atrás sigue corriendo; al volver se reanuda donde estaba. Al
-   llegar a 0 suena un pitido, vibra (en móvil) y sale un aviso. El tiempo
+   llegar a 0 suena un pitido y vibra (el sonido, su volumen y su interruptor
+   viven en sonido.ts y en Ajustes → Gym Stone) y sale un aviso. El tiempo
    sale de Date.now() —no de tics—, así que con la pantalla apagada u
    Obsidian en segundo plano, al volver se recalcula solo: la misma lección
-   que el descanso de la sesión guiada.
+   que el descanso de la sesión guiada. Mientras corre (y con el ajuste
+   «Mantener la pantalla encendida» activo, por defecto) la pantalla no se
+   apaga sola —ver despierta.ts—; en pausa o al parar se suelta.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 import { dos } from "../util";
+import { ReclamoDespierta } from "../despierta";
 import { el, modal, ponerX, toast } from "./componentes";
+import { sonarTemporizador, vibrar } from "./sonido";
 
 /* ── Estado (del módulo: sobrevive al cierre del modal) ─────────────────── */
 let totalMs = 5 * 60000;        // la duración elegida (5:00 al empezar)
@@ -30,6 +35,10 @@ let pausado = false;
 let idReloj: number | null = null;
 let alPintar: (() => void) | null = null;   // repintado del modal, si está abierto
 
+/* Pantalla despierta: solo mientras la cuenta atrás corre (pausa, parado o
+   terminado → se suelta; el ajuste «Mantener la pantalla encendida» manda). */
+const pantalla = new ReclamoDespierta();
+
 /* MODO PRUEBAS (reversible a petición): mientras el temporizador corre o está
    en pausa se OCULTAN las secciones «Ajustar» y «Rápidos», y solo quedan el
    anillo, el estado y los controles. Para volver al comportamiento anterior
@@ -38,33 +47,13 @@ const OCULTAR_SECCIONES_AL_CORRER = true;
 
 const restante = (): number => (finEn != null ? Math.max(0, finEn - Date.now()) : guardado);
 
-/* ── Aviso al terminar: pitido (Web Audio) + vibración + toast ──────────── */
-const pitar = (): void => {
-    try {
-        const Ctx = window.AudioContext
-            ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-        if (!Ctx) return;
-        const ctx = new Ctx();
-        const pitido = (t0: number, hz: number): void => {
-            const o = ctx.createOscillator(), g = ctx.createGain();
-            o.type = "sine";
-            o.frequency.value = hz;
-            g.gain.setValueAtTime(0.0001, ctx.currentTime + t0);
-            g.gain.exponentialRampToValueAtTime(0.28, ctx.currentTime + t0 + 0.02);
-            g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + t0 + 0.26);
-            o.connect(g); g.connect(ctx.destination);
-            o.start(ctx.currentTime + t0);
-            o.stop(ctx.currentTime + t0 + 0.3);
-        };
-        pitido(0, 880); pitido(0.32, 1174.66); pitido(0.64, 880);
-        window.setTimeout(() => void ctx.close(), 1500);
-    } catch { /* sin audio: el aviso visual y la vibración ya están */ }
-};
-
+/* ── Aviso al terminar: pitido + vibración + toast ───────────────────────── */
+/* El pitido y la vibración viven en sonido.ts (compartido con el descanso de
+   la sesión guiada): aquí manda el ajuste «Sonido del temporizador» y el de
+   «Volumen del sonido». */
 const avisar = (): void => {
-    pitar();
-    try { if (typeof navigator.vibrate === "function") navigator.vibrate([300, 120, 300]); }
-    catch { /* sin vibración */ }
+    sonarTemporizador();
+    vibrar();
     toast("⏰ ¡Tiempo! El temporizador ha terminado.");
 };
 
@@ -88,6 +77,7 @@ const arrancar = (ms: number): void => {
     guardado = totalMs;
     pausado = false;
     arrancarReloj();
+    pantalla.poner();   // la cuenta atrás corre: la pantalla no se apaga
     notificar();
 };
 
@@ -96,6 +86,7 @@ const terminar = (): void => {
     pausado = false;
     guardado = 0;
     pararReloj();
+    pantalla.quitar();   // ya sonó: la pantalla puede dormirse
     avisar();
     notificar();
 };
@@ -105,12 +96,13 @@ const parar = (): void => {
     pausado = false;
     guardado = totalMs;
     pararReloj();
+    pantalla.quitar();
     notificar();
 };
 
 const alternarPausa = (): void => {
-    if (finEn != null) { guardado = restante(); finEn = null; pausado = true; pararReloj(); }
-    else if (pausado) { finEn = Date.now() + guardado; pausado = false; arrancarReloj(); }
+    if (finEn != null) { guardado = restante(); finEn = null; pausado = true; pararReloj(); pantalla.quitar(); }
+    else if (pausado) { finEn = Date.now() + guardado; pausado = false; arrancarReloj(); pantalla.poner(); }
     notificar();
 };
 
@@ -131,6 +123,7 @@ const ajustar = (deltaMs: number): void => {
 /* Detiene el intervalo al descargar el plugin (lo llama main.onunload) */
 export const pararTemporizador = (): void => {
     pararReloj();
+    pantalla.quitar();   // ningún candado de pantalla debe sobrevivir al plugin
     alPintar = null;
 };
 
@@ -321,6 +314,7 @@ export function abrirTemporizador(): void {
         finEn = null;
         pausado = false;
         pararReloj();
+        pantalla.quitar();   // elegir preset detiene lo que hubiera en marcha
         fijarEntradas(totalMs);
         notificar();
     };

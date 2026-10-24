@@ -424,7 +424,7 @@ export const pedirTexto = (
 export const selectorUnidad = (alCambiar?: (u: UnidadPeso) => void): HTMLElement => {
     const cont = el("div", "gym-selector-um");   // display:inline-flex… en CSS
     const pintar = () => {
-        cont.innerHTML = "";
+        cont.empty();
         for (const u of UNIDADES_PESO) {
             const activo = pesoActual() === u;
             const b = el("button", "", u);

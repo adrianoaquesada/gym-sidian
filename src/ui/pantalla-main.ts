@@ -1,8 +1,7 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   La pestaña inicial: «Main».
-
-   Es el índice hecho interfaz, con tres secciones a pantalla completa que se
-   cambian desde el carrusel de navegación (sin barra de desplazamiento):
+   La pantalla «Main»: el índice hecho interfaz, con tres secciones a pantalla
+   completa que se cambian desde el carrusel de navegación (sin barra de
+   desplazamiento):
 
      · Rutinas      → los KPIs del resumen + la lista de todas las rutinas
                       (nombre, estado, fechas, semana en curso y sesiones
@@ -11,13 +10,18 @@
                       «rutina/estadisticas»).
      · Ejercicios   → el catálogo global, también a pantalla completa.
 
+   NO es una vista de Obsidian: solo PINTA en el contenedor que le pasa la
+   pestaña que la aloja (ui/vista-app.ts). Main y la ficha de una rutina son
+   dos pantallas de UNA misma pestaña, así que cambiar de una a otra no
+   destruye ni remonta la vista: los componentes que comparten (cabecera
+   naranja, carrusel de navegación, KPIs) se repintan en el mismo sitio y no
+   hay salto visual.
+
    No lee cada archivo de datos: todo sale del índice (Rutinas.md), que se
    regenera solo al guardar.
    ═══════════════════════════════════════════════════════════════════════════ */
 
-import { ItemView, type ViewStateResult, type WorkspaceLeaf } from "obsidian";
 import { CONFIG } from "../config";
-import { aplicacion } from "../estado";
 import { carpetaDatos, rutaIndice, rutaMedidas } from "../ajustes";
 import { borrarRutina, leerIndice, leerMedidas, leerRutina, ultimaMedida } from "../datos";
 import type { IndiceRutina } from "../tipos";
@@ -30,94 +34,28 @@ import { formularioMedidas } from "./registro";
 import { seccionMedidas } from "./estadisticas";
 import { elegirDiaGuiada } from "./sesion-guiada";
 import { abrirTemporizador } from "./temporizador";
-import { VISTA_LISTA, abrirFormulario, abrirRutina } from "./vistas";
+import { abrirFormulario, abrirRutina } from "./vistas";
 
 /* Las secciones de Main, en el orden del carrusel de navegación. */
 type SeccionMain = "rutinas" | "medidas" | "ejercicios";
 
-export class VistaLista extends ItemView {
-    constructor(leaf: WorkspaceLeaf) { super(leaf); }
+export class PantallaMain {
+    /* Sección que se muestra ahora. Rutinas es la de por defecto al llegar
+       (también al volver desde una rutina): la restablece la pestaña en su
+       setState. No viaja en el estado de la pestaña. */
+    seccion: SeccionMain = "rutinas";
 
-    getViewType(): string { return VISTA_LISTA; }
-    getDisplayText(): string { return "Main"; }
-    getIcon(): string { return "dumbbell"; }
+    /* Repinta la pestaña entera: se lo pasa la vista que la aloja. */
+    constructor(private readonly alRepintar: () => void) {}
 
-    /* Al llegar a Main (desde el plugin, desde una rutina o al restaurar la
-       pestaña) se vuelve a la sección de por defecto: «📋 Rutinas». Los
-       cambios de vault no pasan por aquí, así que repintar no pierde la
-       sección en la que estabas. */
-    async setState(state: Record<string, unknown>, result: ViewStateResult): Promise<void> {
-        await super.setState(state, result);
-        this.seccion = "rutinas";
-        await this.pintar();
-    }
-
-    async onOpen(): Promise<void> {
-        // Se repinta sola cuando cambia algo relevante en el vault (índice,
-        // medidas o un archivo de rutina): los datos que lleguen de fuera se
-        // ven al momento, sin recargar Obsidian.
-        const relevante = (ruta: string): boolean =>
-            ruta === rutaIndice()
-            || ruta === rutaMedidas()
-            || ruta.startsWith(carpetaDatos() + "/");
-        const alCambiar = (f: { path: string }) => { if (relevante(f.path)) void this.pintar(); };
-        this.registerEvent(aplicacion().vault.on("modify", alCambiar));
-        this.registerEvent(aplicacion().vault.on("create", alCambiar));
-        this.registerEvent(aplicacion().vault.on("delete", alCambiar));
-        await this.pintar();
-    }
-
-    private accionesHechas = false;
-
-    /* Solo se añaden UNA vez (cada pintado nuevo repetiría los iconos) */
-    private acciones(): void {
-        if (this.accionesHechas) return;
-        this.accionesHechas = true;
-        // Solo recargar: los accesos de siempre (secciones, nueva rutina,
-        // temporizador, medidas) viven en el carrusel de navegación, y
-        // «alternar pesos» y «abrir como markdown» en el menú ⋮ (main.ts).
-        this.addAction("refresh-cw", "Recargar lista", () => void this.pintar());
-    }
-
-    /* Nota cruda de esta pantalla (para «abrir como markdown» del menú ⋮) */
-    rutaMarkdown(): string { return rutaIndice(); }
-
-    /* ── Semana en curso, calculada solo con las fechas del índice ── */
-    private semanaDe(f: IndiceRutina): number {
-        const d = diffDias(f.inicio, hoy()) + 1;
-        if (d <= 0) return 0;                    // aún no ha empezado
-        return Math.min(Math.ceil(d / 7), f.semanas || 1);
-    }
-
-    private estadoTxt = (f: IndiceRutina): string =>
-        f.estado === "pausada" ? "⏸ Pausada" : f.estado === "finalizada" ? "🏁 Finalizada"
-            : this.semanaDe(f) > f.semanas ? "✔ Transcurrida" : "🟢 Activa";
-
-    private estadoColor = (f: IndiceRutina): string =>
-        f.estado === "pausada" ? "var(--text-muted)"
-            : f.estado === "finalizada" || this.semanaDe(f) > f.semanas ? CONFIG.AZUL : CONFIG.VERDE;
-
-    /* Sección que se muestra ahora. Rutinas es la que arranca al abrir el
-       plugin (o al volver a Main desde una rutina). No viaja en el estado de
-       la pestaña: siempre se vuelve a la que tiene sentido ver. */
-    private seccion: SeccionMain = "rutinas";
-
-    private irA(s: SeccionMain): Promise<void> {
+    private irA(s: SeccionMain): void {
         this.seccion = s;
-        return this.pintar();
+        this.alRepintar();
     }
 
-    async pintar(): Promise<void> {
-        const raiz = this.contentEl;
-        raiz.empty();
-        raiz.addClass("gym-vista");
-
-        // Acciones en la cabecera de la pestaña (como las de Kanban)
-        this.acciones();
-
-        // Todo el contenido vive en la pestaña (sin riel lateral)
-        const cont = raiz;
-
+    /* Rellena el contenedor con la sección activa (la pestaña lo monta ya
+       construido, de una sola tacada: ver VistaApp#pintar). */
+    async pintar(cont: HTMLElement): Promise<void> {
         // Cabecera naranja: el título de esta pantalla («casa»)
         pintarCabecera(cont, [{ texto: "🏋️ Main" }]);
 
@@ -127,11 +65,11 @@ export class VistaLista extends ItemView {
         // no crea rutinas, así que el botón desaparece.
         const botones: BotonNav[] = [
             { texto: "📋 Rutinas", activo: this.seccion === "rutinas",
-              alPulsar: () => void this.irA("rutinas") },
+              alPulsar: () => this.irA("rutinas") },
             { texto: "⚖️ Medidas e IMC", activo: this.seccion === "medidas",
-              alPulsar: () => void this.irA("medidas") },
+              alPulsar: () => this.irA("medidas") },
             { texto: "🗂 Ejercicios", activo: this.seccion === "ejercicios",
-              alPulsar: () => void this.irA("ejercicios") },
+              alPulsar: () => this.irA("ejercicios") },
         ];
         // En «Medidas e IMC» la acción principal registra medidas; en
         // «Rutinas», crea una rutina nueva; en «Ejercicios», ninguna.
@@ -260,7 +198,7 @@ export class VistaLista extends ItemView {
     private async sesionGuiada(f: IndiceRutina): Promise<void> {
         const r = await leerRutina(f.id);
         if (r.error || !r.datos) return toast("⚠️ " + (r.error ?? "No pude leer esa rutina."), false);
-        elegirDiaGuiada(r.datos, () => void this.pintar());
+        elegirDiaGuiada(r.datos, () => this.alRepintar());
     }
 
     private async borrar(f: IndiceRutina): Promise<void> {
@@ -271,7 +209,7 @@ export class VistaLista extends ItemView {
         try {
             await borrarRutina(f.id);
             toast(`🗑 Rutina «${f.nombre}» borrada (copia .bak guardada)`);
-            await this.pintar();
+            this.alRepintar();
         } catch (e: unknown) {
             console.error("[Gym Stone borrar]", e);
             toast("⚠️ No pude borrar la rutina: " + msgError(e), false);
@@ -281,6 +219,27 @@ export class VistaLista extends ItemView {
     private async abrirMedidas(): Promise<void> {
         const medidas = await leerMedidas();
         if (medidas.error) toast("⚠️ " + medidas.error, false);
-        formularioMedidas(medidas, () => void this.pintar());
+        formularioMedidas(medidas, () => this.alRepintar());
     }
+
+    /* ── Semana en curso, calculada solo con las fechas del índice ── */
+    private semanaDe(f: IndiceRutina): number {
+        const d = diffDias(f.inicio, hoy()) + 1;
+        if (d <= 0) return 0;                    // aún no ha empezado
+        return Math.min(Math.ceil(d / 7), f.semanas || 1);
+    }
+
+    private estadoTxt = (f: IndiceRutina): string =>
+        f.estado === "pausada" ? "⏸ Pausada" : f.estado === "finalizada" ? "🏁 Finalizada"
+            : this.semanaDe(f) > f.semanas ? "✔ Transcurrida" : "🟢 Activa";
+
+    private estadoColor = (f: IndiceRutina): string =>
+        f.estado === "pausada" ? "var(--text-muted)"
+            : f.estado === "finalizada" || this.semanaDe(f) > f.semanas ? CONFIG.AZUL : CONFIG.VERDE;
 }
+
+/* Datos de los que solo depende Main (índice, medidas y los archivos de las
+   rutinas): un cambio en el vault que no toque nada de eso no la repinta.
+   Lo usa la pestaña que la aloja (vista-app.ts). */
+export const esRutaDeMain = (ruta: string): boolean =>
+    ruta === rutaIndice() || ruta === rutaMedidas() || ruta.startsWith(carpetaDatos() + "/");

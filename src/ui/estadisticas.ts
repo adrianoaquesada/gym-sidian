@@ -143,7 +143,7 @@ function seccionProgresion(c: HTMLElement, rutina: Rutina): void {
     c.appendChild(cont);
 
     const pintarEjercicio = () => {
-        cont.innerHTML = "";
+        cont.empty();
         const info = ejercicios.find(e => e.id === sel.value) ?? conHistorial[0];
         const hist = historialEjercicio(rutina, info.id);
 

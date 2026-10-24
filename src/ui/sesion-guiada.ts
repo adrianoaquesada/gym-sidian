@@ -3,12 +3,14 @@
 
    Pantalla completa (overlay en document.body, clase .gym-modo; el CSS vive
    en styles.css). Un ejercicio cada vez, serie hecha/saltada, reloj de
-   sesión, descanso con temporizador y guardado/reanudación a mitad de
-   sesión. Al cerrar se retiran el intervalo del reloj y el listener de
-   teclado, para no dejar fugas.
+   sesión, descanso con temporizador (al terminar pitido + vibración, si sus
+   ajustes están encendidos —ver sonido.ts—) y guardado/reanudación a mitad
+   de sesión. Al cerrar se retiran el intervalo del reloj, el listener de
+   teclado y el reclamo de pantalla despierta, para no dejar fugas.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 import { CONFIG } from "../config";
+import { ReclamoDespierta } from "../despierta";
 import {
     descansoDe, diaPorId, diaProgramado, esLibre, esSaltada, esSinRegistrar,
     escribirRutina, seriesHechas, ultimosValores,
@@ -18,7 +20,21 @@ import { pesoACampo, pesoAKg, pesoTexto } from "../unidades";
 import { aNumero, dos, esc, fechaLegible, hoy, msgError } from "../util";
 import { btn, confirmar, el, modal, pedirTexto, toast } from "./componentes";
 import { elegirEjercicio, pedirDescanso } from "./ejercicios-ui";
+import { sonarDescanso, vibrar } from "./sonido";
 import type { Pintar } from "./pintar";
+
+/* ── Cierre de emergencia (main.onunload) ──────────────────────────────────
+   Todo lo de una sesión abierta —el intervalo del reloj, el listener de
+   teclado y el reclamo de pantalla despierta— vive en EL CLOSURE de
+   modoSesion, fuera del alcance de limpiarOverlays(), que solo se lleva el
+   overlay del DOM. Así la sesión se cierra de verdad al descargar el
+   plugin (si no, el intervalo seguiría corriendo y el Escape abriría un
+   diálogo sobre una sesión ya inexistente). */
+const sesionesAbiertas = new Set<() => void>();
+
+export const cerrarSesionesAbiertas = (): void => {
+    for (const cierre of [...sesionesAbiertas]) cierre();
+};
 
 /* ── Tipos locales del modo ────────────────────────────────────────────────
    `objetivo` es el EjercicioDef del plan (o un equivalente local cuando el
@@ -154,6 +170,12 @@ export async function modoSesion(rutina: Rutina, diaId: string | null, pintar: P
     // descanso) y se consume al registrar.
     let ejecDesde: number | null = null, ejecDesdeEj = -1;
 
+    /* ── Pantalla despierta: mientras la sesión corre y no está en pausa, la
+          pantalla no se apaga (el descanso y el cronómetro son la lección de
+          despierta.ts; el ajuste del mismo nombre la puede apagar). ── */
+    const pantalla = new ReclamoDespierta();
+    const sincronizaPantalla = (): void => pantalla.fijar(iniciada && !pausado);
+
     // Progreso guardado a mitad de sesión (botón «Guardar» o cierre inesperado): se ofrece continuarlo.
     // El registro también sirve de hueco si se empieza de cero: Guardar lo actualiza y Terminar lo reemplaza.
     let parcialGuard: Sesion | null = (rutina.sesiones ?? []).find(s => s.enCurso && s.diaId === dia.id) || null;
@@ -269,6 +291,7 @@ export async function modoSesion(rutina: Rutina, diaId: string | null, pintar: P
         if (iniciada || pausado) return;
         iniciada = true;
         inicio = Date.now();
+        sincronizaPantalla();   // la sesión corre: la pantalla no se apaga
         pintarEjercicio();
     };
 
@@ -416,7 +439,7 @@ export async function modoSesion(rutina: Rutina, diaId: string | null, pintar: P
         const prev: Partial<Record<number, { reps: string; peso: string }>> = {};
         inReps.forEach((inp, i) => { if (inp) prev[i] = { reps: inp.value, peso: inPeso[i]?.value ?? "" }; });
         inReps = []; inPeso = [];
-        contEj.innerHTML = "";
+        contEj.empty();
 
         // ── Sesión sin ejercicios (rutina libre recién abierta) ──
         // Sin nada que recorrer no tiene sentido el pie de navegación ni la
@@ -738,14 +761,18 @@ export async function modoSesion(rutina: Rutina, diaId: string | null, pintar: P
         btnPausa.textContent = pausado ? "▶ Reanudar" : "⏸ Pausa";
         btnPausa.title = pausado ? "Reanudar la sesión" : "Pausa: congela el reloj y el descanso (no cuenta en los tiempos)";
         cuerpo.style.opacity = pausado ? ".5" : "1";
+        sincronizaPantalla();   // en pausa la pantalla puede volver a dormirse
         pintarEjercicio();   // el botón naranja pasa a mostrar el aviso de pausa (y viceversa)
     };
 
     const cerrar = () => {
         window.clearInterval(idReloj);
         document.removeEventListener("keydown", onKey);
+        pantalla.quitar();   // nada de pantalla despierta tras salir de la sesión
+        sesionesAbiertas.delete(cerrar);
         overlay.remove();
     };
+    sesionesAbiertas.add(cerrar);   // por si el plugin se descarga con la sesión abierta
     const onKey = (e: KeyboardEvent) => {
         if (e.key !== "Escape") return;
         // Si hay un modal o un confirm por encima, el Escape es suyo (si no, se reabrirían en bucle)
@@ -892,9 +919,15 @@ export async function modoSesion(rutina: Rutina, diaId: string | null, pintar: P
     };
 
     // ── Fin del descanso (lo llaman el reloj y el −15 s): «¡Listo!»; si
-    // estábamos mirando otro ejercicio, se vuelve DESLIZANDO al dueño ──
+    // estábamos mirando otro ejercicio, se vuelve DESLIZANDO al dueño. ──
+    // Aviso sonoro + vibración (los mismos de sonido.ts que el ⏱ libre):
+    // un SOLO sitio para los dos caminos que terminan el descanso —el reloj
+    // y −15 s—, y el «¡Listo!» de pantalla ya hace de aviso visual. No suena
+    // con ⏭ Saltar descanso: saltarlo es cosa tuya, no un aviso. ──
     const finDescanso = (): void => {
         if (!descanso) return;
+        sonarDescanso();
+        vibrar();
         descanso.restanteMs = 0;
         ejecDesde = transcurridoMs();   // AHÍ empiezas la serie (para desglosar descanso/ejecución)
         ejecDesdeEj = descanso.ej;
@@ -929,6 +962,7 @@ export async function modoSesion(rutina: Rutina, diaId: string | null, pintar: P
 
     pintarEjercicio();
     relojEl.textContent = `⏱ ${relojTexto(transcurridoMs())}`;   // al reanudar, el reloj continúa desde donde estaba
+    sincronizaPantalla();   // sesión reabierta a mitad: ya corre, así que despierta
     document.addEventListener("keydown", onKey);
     document.body.appendChild(overlay);
 }
