@@ -2,14 +2,14 @@
    Medidas corporales: peso y talla, globales para todo el vault.
    ═══════════════════════════════════════════════════════════════════════════ */
 
-import { conf } from "../estado";
+import { rutaMedidas } from "../ajustes";
 import { contenidoNotaDatos, escribirSeguro, leerNotaDatos } from "./archivos";
 import type { LecturaNota, MedidasDatos } from "../tipos";
 
 export const medidasVacias = (): MedidasDatos => ({ registros: [] });
 
 export const leerMedidas = async (): Promise<LecturaNota<MedidasDatos>> => {
-    const ruta = conf().rutaMedidas;
+    const ruta = rutaMedidas();
     const r = await leerNotaDatos<MedidasDatos>(ruta);
     if (r.error) {
         // Archivo ausente = sin medidas todavía; roto = se avisa y no se toca
@@ -21,7 +21,7 @@ export const leerMedidas = async (): Promise<LecturaNota<MedidasDatos>> => {
 };
 
 export const escribirMedidas = async (datos: MedidasDatos): Promise<string> => {
-    const ruta = conf().rutaMedidas;
+    const ruta = rutaMedidas();
     datos.registros = [...(datos.registros ?? [])].sort((a, b) => (a.fecha < b.fecha ? -1 : a.fecha > b.fecha ? 1 : 0));
     await escribirSeguro(ruta, contenidoNotaDatos(datos));
     return ruta;

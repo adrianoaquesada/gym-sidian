@@ -1,10 +1,14 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   4 · Estadísticas del dashboard: KPIs, volumen por sesión/semana/mes,
-   progresión por ejercicio, peso corporal e IMC y récords personales.
+   4 · Estadísticas de la rutina (popup 📈 de la fila de navegación): KPIs,
+   volumen por sesión/semana/mes, progresión por ejercicio, peso corporal e
+   IMC y récords personales.
 
    Puerto fiel de la sección 4 del motor original (_gym-gestor.js). Las
-   sub-secciones 4b-4d (progresión, medidas y récords) son funciones PRIVADAS
-   de este módulo: solo se llama a seccionEstadisticas desde el gestor.
+   sub-secciones 4b-4d (progresión, medidas y récords) se pintan desde aquí:
+   el gestor llama a seccionEstadisticas, que la abre entera dentro de un
+   modal (sin caja colapsable). EXCEPCIÓN: 4c (peso corporal e IMC) está
+   exportada porque Main la pinta también, a pantalla completa, en su
+   sección «Medidas e IMC».
    ═══════════════════════════════════════════════════════════════════════════ */
 
 import { CONFIG } from "../config";
@@ -16,7 +20,7 @@ import {
 import { decimal, dos, esFechaValida, fechaLegible, nombreMes, tsDe } from "../util";
 import { pesoActual, pesoMostrar, pesoTexto, tallaTexto } from "../unidades";
 import type { LecturaNota, MedidasDatos, Rutina, Sesion } from "../tipos";
-import { cajaColapsable, el, KPI, limitaAlto, tablaEn } from "./componentes";
+import { el, KPI, limitaAlto, tablaEn } from "./componentes";
 import { grafica } from "./grafica";
 
 /* ══════════════════ 4 · Estadísticas ══════════════════ */
@@ -24,9 +28,9 @@ import { grafica } from "./grafica";
 export function seccionEstadisticas(
     c: HTMLElement, rutina: Rutina, medidas: LecturaNota<MedidasDatos>,
 ): void {
-    const c2 = cajaColapsable(c, "📈 Estadísticas",
-        esLibre(rutina) ? "días entrenados, volumen, progresión y récords" : "adherencia, volumen, progresión y récords",
-        "gymStatsAbiertas");
+    // En popup (gestor.ts): sin caja colapsable — el título y el ✕ los pone
+    // el modal, y el cuerpo va directo al contenedor.
+    const c2 = c;
     const sesiones = [...(rutina.sesiones ?? [])].filter(s => esFechaValida(s.fecha));
     const adher = adherencia(rutina);
 
@@ -200,15 +204,22 @@ function seccionProgresion(c: HTMLElement, rutina: Rutina): void {
     pintarEjercicio();
 }
 
-/* ── 4c · Peso corporal e IMC ── */
-function seccionMedidas(c: HTMLElement, medidas: LecturaNota<MedidasDatos>): void {
-    const tit = el("div", "gym-tit");
-    tit.append(el("span", null, "Peso corporal"), " — evolución e IMC");
-    c.appendChild(tit);
+/* ── 4c · Peso corporal e IMC ──
+   También la usa Main (sección «Medidas e IMC»), así que va exportada: ahí
+   el encabezado lo pone la propia sección, y con { titulo: false } se omiten
+   tanto el texto «Peso corporal — evolución e IMC» como su línea punteada. */
+export function seccionMedidas(
+    c: HTMLElement, medidas: LecturaNota<MedidasDatos>, { titulo = true }: { titulo?: boolean } = {},
+): void {
+    if (titulo) {
+        const tit = el("div", "gym-tit");
+        tit.append(el("span", null, "Peso corporal"), " — evolución e IMC");
+        c.appendChild(tit);
+    }
     const regs = (medidas.datos?.registros ?? []).filter(r => esFechaValida(r.fecha) && Number.isFinite(Number(r.pesoKg)));
     const u = ultimaMedida(medidas.datos);
     if (!regs.length) {
-        c.appendChild(el("div", "opacity:.7;font-size:.86em;", "Sin medidas todavía: usa el botón «⚖️ Registrar peso y talla»."));
+        c.appendChild(el("div", "opacity:.7;font-size:.86em;", "Sin medidas todavía: usa el botón «⚖️ Registrar medidas»."));
         return;
     }
     const kpis = el("div", "display:flex;flex-wrap:wrap;gap:10px;margin-bottom:10px;");

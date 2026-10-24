@@ -6,13 +6,15 @@
    vez que se guarda una rutina, así que aunque lo borres a mano se repone.
    ═══════════════════════════════════════════════════════════════════════════ */
 
-import { conf } from "../estado";
+import { rutaIndice } from "../ajustes";
 import { contenidoNotaDatos, leerNotaDatos, escribirSeguro } from "./archivos";
 import type { Indice, IndiceRutina, Rutina } from "../tipos";
 
 export const indiceVacio = (): Indice => ({ version: 1, rutinas: [] });
 
-export const rutaIndice = (): string => conf().rutaIndice;
+// La ruta del índice vive en ajustes (raíz única); aquí se reexporta para
+// que quien ya importaba datos/indice no se entere del cambio.
+export { rutaIndice };
 
 // Fila del índice para una rutina (lo calcula quien la guarda, no se guarda aparte)
 export const entradaDeRutina = (rutina: Rutina): IndiceRutina => ({

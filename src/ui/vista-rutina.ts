@@ -1,18 +1,16 @@
 /* ═══════════════════════════════════════════════════════════════════════════
    La pestaña de una rutina: su dashboard a todo el ancho.
 
-   Aquí solo vive la cabecera de la pestaña (editar, recargar) y el estado
-   (qué rutina está abierta); el contenido lo pinta ui/gestor.ts.
+   Aquí solo vive la cabecera de la pestaña (recargar; el resto de accesos
+   está en la fila de navegación y en el menú ⋮) y el estado (qué rutina
+   está abierta); el contenido lo pinta ui/gestor.ts.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 import { ItemView, type ViewStateResult, type WorkspaceLeaf } from "obsidian";
 import { aplicacion } from "../estado";
 import { leerRutina, rutaDatosDe } from "../datos";
-import { fijarUnidadPeso, pesoActual, unidadContraria } from "../unidades";
 import { pintarDashboard } from "./gestor";
-import { toast } from "./componentes";
-import { abrirTemporizador } from "./temporizador";
-import { VISTA_RUTINA, abrirComoMarkdown, abrirFormulario, abrirLista } from "./vistas";
+import { VISTA_RUTINA, abrirLista } from "./vistas";
 
 interface EstadoRutinaAbierta { [k: string]: unknown; rutinaId?: string | null; }
 
@@ -54,22 +52,14 @@ export class VistaRutina extends ItemView {
     private acciones(): void {
         if (this.accionesHechas) return;
         this.accionesHechas = true;
-        this.addAction("arrow-left", "Volver a la lista de rutinas", () => void abrirLista());
-        this.addAction("pencil", "Editar rutina", () => {
-            if (this.rutinaId) void abrirFormulario({ modo: "editar", rutinaId: this.rutinaId });
-        });
+        // Solo recargar: volver/editar/temporizador viven en la fila de
+        // navegación, y «alternar pesos» y «abrir como markdown» en el
+        // menú ⋮ (main.ts), no aquí.
         this.addAction("refresh-cw", "Recargar", () => void this.pintar());
-        this.addAction("timer", "⏱ Temporizador libre (cuenta atrás)", () => abrirTemporizador());
-        this.addAction("arrow-left-right", "Alternar pesos kg ↔ libras", () => {
-            fijarUnidadPeso(unidadContraria());
-            toast(`⚖️ Pesos en ${pesoActual()}`);
-            void this.pintar();
-        });
-        // Arriba-derecha: ver esta misma pestaña como la nota cruda
-        this.addAction("file-text", "Abrir esta rutina como markdown", () => {
-            if (this.rutinaId) abrirComoMarkdown(rutaDatosDe(this.rutinaId));
-        });
     }
+
+    /* Nota cruda de esta rutina (para «abrir como markdown» del menú ⋮) */
+    rutaMarkdown(): string | null { return this.rutinaId ? rutaDatosDe(this.rutinaId) : null; }
 
     async pintar(): Promise<void> {
         const raiz = this.contentEl;

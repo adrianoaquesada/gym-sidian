@@ -40,8 +40,16 @@ interface AjustePlan { d: DefSesion; maxHoy: number }
 
 export function elegirDiaGuiada(rutina: Rutina, pintar: Pintar): void {
     // Rutina libre: no hay días que elegir, se entra directo y los ejercicios
-    // se van añadiendo dentro de la sesión.
-    if (esLibre(rutina)) { void modoSesion(rutina, null, pintar); return; }
+    // se van añadiendo dentro de la sesión. Si queda progreso sin terminar
+    // (sesión en curso), se entra por SU día: el nombre con el que se bautizó
+    // al empezar ES el id del día y la reanudación lo busca por ahí
+    // (s.diaId === dia.id). Sin nombre guardado (diaId "") se entra igual que
+    // siempre, en el día sintético de toda la vida.
+    if (esLibre(rutina)) {
+        const enCurso = (rutina.sesiones ?? []).find(s => s.enCurso);
+        void modoSesion(rutina, enCurso?.diaId || null, pintar);
+        return;
+    }
     const prog = diaProgramado(rutina, hoy());
     if (prog) { void modoSesion(rutina, prog.id, pintar); return; }
     // Hoy no está programado: elegir a mano (una sesión en día no programado es válido)
@@ -100,10 +108,14 @@ const aSerieGuardada = (s: SerieSesion): SerieSesion => ({
 export async function modoSesion(rutina: Rutina, diaId: string | null, pintar: Pintar): Promise<void> {
     medirAreasSeguras();   // antes de montar la pantalla: el padding sale de aquí
     // En la rutina libre no hay día al que afiliarse: la sesión se apoya en un
-    // día sintético sin id (los registros guardan diaId vacío). El null del
-    // llamador no casa con ningún id (comparación estricta, como en el motor).
+    // día sintético. Si viene un diaId con nombre (una sesión en curso de un
+    // día bautizado, o una reanudación tras nombrarlo) ese nombre ES el id del
+    // día, igual que en el formulario «＋ Registrar sesión»; sin nombre se
+    // conserva el id vacío de siempre (los registros guardan diaId ""). El
+    // null del llamador no casa con ningún id (comparación estricta, como en
+    // el motor).
     const dia = diaPorId(rutina, diaId as string)
-        ?? (esLibre(rutina) ? { id: "", nombre: "Sesión libre", ejercicios: [] } : null)
+        ?? (esLibre(rutina) ? { id: diaId ?? "", nombre: diaId || "Sesión libre", ejercicios: [] } : null)
         ?? rutina.dias?.[0];
     if (!dia) return toast("⚠️ La rutina no tiene días definidos.", false);
     const defs: DefSesion[] = (dia.ejercicios ?? []).map(e => {
@@ -207,8 +219,9 @@ export async function modoSesion(rutina: Rutina, diaId: string | null, pintar: P
 
     const cab = el("div", "gym-modo-cab");
     const titCab = el("div", "flex:1;min-width:0;");
+    const titDia = el("b", "gym-naranja", `🎯 ${dia.nombre}`);   // se refresca si se bautiza el día (libre)
     titCab.append(
-        el("b", "gym-naranja", `🎯 ${dia.nombre}`),
+        titDia,
         el("div", "gym-modo-fecha", fechaLegible(hoy())),
     );
     // El reloj lleva el mismo cuerpo que los botones de al lado (54 px, mismo estilo)
@@ -378,6 +391,24 @@ export async function modoSesion(rutina: Rutina, diaId: string | null, pintar: P
         return b;
     };
 
+    /* ── Nombre del día (solo rutinas libres) ──
+       En la libre el nombre del día ES su identificador (como en el formulario
+       «＋ Registrar sesión»): lo que se teclea se usa como id/nombre del día
+       sintético, de modo que al guardar la sesión queda diaId = ese nombre y
+       nombreDia() lo muestra después en tablas, estadísticas e historial.
+       Con el campo vacío se conserva el comportamiento de siempre: id "" y
+       «Sesión libre» (nombreDia muestra «Libre») — es lo que menos rompe,
+       porque los guardados antiguos ya usan diaId "" y la reanudación sigue
+       buscando ese mismo valor. Las rutinas planificadas no se tocan: ahí el
+       día viene del plan. */
+    const aplicarNombreDia = (texto: string): void => {
+        if (!esLibre(rutina)) return;
+        const nombre = texto.trim();
+        dia.id = nombre;
+        dia.nombre = nombre || "Sesión libre";
+        titDia.textContent = `🎯 ${dia.nombre}`;
+    };
+
     const pintarEjercicio = () => {
         const ej = defs[idx];
         relojEl.textContent = `⏱ ${relojTexto(transcurridoMs())}`;   // el reloj se refresca también en cada repintado
@@ -397,6 +428,28 @@ export async function modoSesion(rutina: Rutina, diaId: string | null, pintar: P
             contEj.appendChild(el("div", "font-size:.92em;opacity:.8;line-height:1.5;",
                 "Aquí no hay plan previo: elige o escribe lo que vas a hacer y registra cada serie " +
                 "con sus repeticiones y su peso. Puedes alternar variantes de un día para otro."));
+            // ── Nombre del día: se pide ANTES del primer ejercicio, que es el
+            // momento en que se sabe cómo se va a llamar esta sesión. Se aplica
+            // AL ESCRIBIR (oninput), así que el nombre sobrevive a cualquier
+            // repintado (p. ej. al pulsar «＋ Añadir ejercicio») sin que nadie
+            // tenga que recordárselo a la hora de guardar (diaId: dia.id).
+            if (esLibre(rutina)) {
+                const cNombre = el("div", "gym-fila");
+                cNombre.appendChild(el("div", "gym-et", "Nombre del día"));
+                const inNombre = el("input");
+                inNombre.type = "text";
+                inNombre.value = dia.nombre;
+                inNombre.placeholder = "Sesión libre";
+                inNombre.setAttribute("aria-label", "Nombre del día");
+                // Mismo aire que los inputs de los modales (styles.css no tiene
+                // una clase para esto dentro de .gym-modo): estilos en línea.
+                inNombre.style.cssText = "width:100%;min-height:48px;padding:10px 11px;border-radius:8px;" +
+                    "font-size:1em;border:1px solid var(--background-modifier-border);" +
+                    "background:var(--background-secondary);color:var(--text-normal);";
+                inNombre.oninput = () => aplicarNombreDia(inNombre.value);
+                cNombre.appendChild(inNombre);
+                contEj.appendChild(cNombre);
+            }
             const bAnadir0 = anadirEjercicioBoton();
             bAnadir0.classList.add("gym-btn-anadir0");   // ancho/alto completo (CSS)
             contEj.appendChild(bAnadir0);

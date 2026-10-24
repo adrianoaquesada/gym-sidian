@@ -1,13 +1,14 @@
 /* ═══════════════════════════════════════════════════════════════════════════
    3 · Registro: sesión, anotación y medidas.
 
-   · seccionRegistro     → los botones dentro del dashboard (más el selector
-                           de unidad kg | lb y la última medida)
    · formularioSesion    → crear o editar una sesión: día → ejercicios →
                            series con reps/peso/descanso → guardar
    · abrirRegistro       → si ese día ya tiene sesiones, ofrece editarlas
    · formularioAnotacion → anotación de un día
    · formularioMedidas   → peso y talla (se guardan siempre en kg y cm)
+
+   (La antigua seccionRegistro desapareció: sus botones viven ahora en el
+   carrusel de navegación del dashboard de la rutina.)
 
    El estado de cada formulario vive en su propia closure (los modales no
    dependen del render de la nota) y al guardar se usa escribirRutina /
@@ -15,6 +16,7 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 
 import { conf } from "../estado";
+import { rutaMedidas } from "../ajustes";
 import { CONFIG } from "../config";
 import {
     conValor, diaPorId, esLibre, escribirMedidas, escribirRutina, esSaltada,
@@ -27,10 +29,9 @@ import type {
     EjercicioDef, EjercicioSesion, LecturaNota, Medida, MedidasDatos,
     Rutina, SerieSesion, Sesion,
 } from "../tipos";
-import { btn, confirmar, el, modal, pedirTexto, ponerX, selectorUnidad, toast } from "./componentes";
+import { btn, confirmar, el, modal, ponerX, selectorUnidad, toast } from "./componentes";
 import { elegirEjercicio, pedirDescanso, textoDescanso } from "./ejercicios-ui";
 import type { Pintar } from "./pintar";
-import { elegirDiaGuiada } from "./sesion-guiada";
 
 /* ── Tipos de trabajo del formulario ──────────────────────────────────────
    El registro se teclea a mano y la copia de trabajo es más laxa que lo que
@@ -58,52 +59,9 @@ interface SesionTrabajo {
     transcurridoMs?: number;
 }
 
-/* ══════════════════ Sección dentro del dashboard ══════════════════ */
-
-export function seccionRegistro(
-    c: HTMLElement, rutina: Rutina, pintar: Pintar, medidas: LecturaNota<MedidasDatos>,
-): void {
-    c.appendChild(el("div", "gym-tit")).append(el("span", null, "⚡ Registro rápido"));
-
-    // Modo sesión guiada: pensado para el móvil, un ejercicio a la vez con descansos
-    const bGuiada = el("button", "gym-btn primario gym-btn-guiada", "🎯 Empezar sesión guiada");
-    bGuiada.type = "button";
-    bGuiada.id = "gym-btn-guiada";
-    bGuiada.title = esLibre(rutina)
-        ? "Pantalla completa con cronómetro y descansos: los ejercicios se van añadiendo sobre la marcha"
-        : "Un ejercicio a la vez, con temporizador de descanso: cómodo desde el móvil";
-    // Se importa del módulo de la sesión guiada; se llama SOLO en el clic
-    // (los imports cruzados se resuelven en tiempo de ejecución)
-    bGuiada.onclick = () => elegirDiaGuiada(rutina, pintar);
-    c.appendChild(bGuiada);
-
-    const fila = el("div", "gym-botones");
-    // En la libre se arranca sin día; en el formulario se puede asignar uno
-    // (o darlo de alta) igual que en las planificadas
-    fila.appendChild(btn("＋ Registrar sesión", "", () => abrirRegistro(rutina, { fecha: hoy(), diaId: rutina.dias?.[0]?.id }, pintar)));
-    fila.appendChild(btn("📝 Añadir anotación", "", () => formularioAnotacion(rutina, hoy(), pintar)));
-    fila.appendChild(btn("⚖️ Registrar peso y talla", "", () => formularioMedidas(medidas, pintar)));
-    c.appendChild(fila);
-
-    // Unidad de peso (kg | lb): el MISMO selector que en el creador.
-    // Al cambiarla se repinta entera la rutina para que todo quede coherente.
-    const cUnidad = el("div", "display:flex;align-items:center;gap:8px;margin:6px 0 2px;");
-    cUnidad.appendChild(el("div", "font-size:.78em;font-weight:700;letter-spacing:.05em;text-transform:uppercase;opacity:.7;", "Peso en"));
-    cUnidad.appendChild(selectorUnidad(() => void pintar()));
-    c.appendChild(cUnidad);
-
-    const u = ultimaMedida(medidas.datos);
-    const linea = el("div", "font-size:.84em;opacity:.8;");
-    if (u.pesoKg) {
-        linea.append("Última medida: ", el("b", null, pesoTexto(u.pesoKg)),
-            ` · ${tallaTexto(u.tallaCm)}`);
-        if (u.imc) linea.append(" · IMC ", el("b", null, decimal(u.imc)));
-        linea.append(" ", el("span", "gym-tenue", `(${fechaLegible(u.fecha)})`));
-    } else {
-        linea.textContent = "Todavía no hay medidas de peso ni talla registradas.";
-    }
-    c.appendChild(linea);
-}
+// Contador para el id del <datalist> del campo «Día de la rutina»: cada
+// formulario (crear o editar) monta el suyo, así que el id debe ser único.
+let dlDiaN = 0;
 
 /* ══════════════════ Formulario de sesión ══════════════════
    Crear o editar. Precarga los objetivos del día (salvo en edición, donde
@@ -141,32 +99,57 @@ export function formularioSesion(
     const inFecha = el("input"); inFecha.type = "date"; inFecha.value = datos.fecha;
     cF.appendChild(el("div", "gym-et", "Fecha")); cF.appendChild(inFecha);
     const cD = el("div", "flex:1;min-width:140px;");
-    const selDia = el("select");
     const nuevaOp = (valor: string, texto: string): HTMLOptionElement => {
         const o = createEl("option");
         o.value = valor; o.textContent = texto;
         return o;
     };
-    // En la libre no hay días fijos: el selector se compone de los que ya
-    // llevan sus sesiones (el nombre ES el diaId, así que nombreDia lo
-    // muestra igual en tablas y estadísticas) y de «＋ Nuevo día…» para dar
-    // de alta uno al vuelo, igual que en las planificadas.
     const libre = esLibre(rutina);
-    let opNuevo: HTMLOptionElement | null = null;
+    // Lo que se teclea en la libre es el nombre del día (y el nombre ES el
+    // diaId): se recortan los espacios y «Sin día» —la etiqueta que en el
+    // antiguo select era la opción vacía— cuenta como sin día asignado.
+    const diaTecleado = (bruto: string): string => {
+        const t = bruto.trim();
+        return t === "Sin día" ? "" : t;
+    };
+    // ── Campo «Día de la rutina» ────────────────────────────────────────
+    // · Planificada → <select> con las jornadas del plan, exactamente igual
+    //   que siempre (con la opción extra si el día ya no está en la rutina).
+    // · Libre → <input type="text"> + <datalist>: el nombre se teclea DIRECTO,
+    //   sin el antiguo diálogo «＋ Nuevo día…», y desplegando el campo se
+    //   sugieren los días que ya tienen sesiones (al guardar, un nombre nuevo
+    //   se da de alta solo: el nombre es el id, que es lo que lee nombreDia).
+    // `selDia` es el control que toque; `valorDia()` lo lee sin importar el tipo.
+    let selDia: HTMLSelectElement | HTMLInputElement;
     if (libre) {
-        selDia.appendChild(nuevaOp("", "Sin día"));
+        const inDia = el("input");
+        inDia.type = "text";
+        inDia.placeholder = "Escribe o elige un día";
+        const dl = createEl("datalist");
+        dl.id = `gym-dia-dl-${++dlDiaN}`;   // id único por formulario (como en pedirTexto)
         const usados = [...new Set((rutina.sesiones ?? []).map(s => s.diaId ?? "").filter(Boolean))];
-        for (const d of usados) selDia.appendChild(nuevaOp(d, d));
-        if (datos.diaId && !usados.includes(datos.diaId)) selDia.appendChild(nuevaOp(datos.diaId, datos.diaId));
-        opNuevo = nuevaOp("__nuevo__", "＋ Nuevo día…");
-        selDia.appendChild(opNuevo);
+        if (datos.diaId && !usados.includes(datos.diaId)) usados.push(datos.diaId);
+        for (const d of usados) dl.appendChild(nuevaOp(d, d));
+        inDia.setAttribute("list", dl.id);
+        inDia.value = datos.diaId;
+        // Escritura directa: cada tecleo (y la elección del datalist) deja
+        // `diaId` listo para el guardado, sin esperar al cambio de foco.
+        inDia.oninput = () => { datos.diaId = diaTecleado(inDia.value); };
+        cD.appendChild(dl);
+        selDia = inDia;
     } else {
-        for (const d of rutina.dias ?? []) selDia.appendChild(nuevaOp(d.id, d.nombre));
+        const sel = el("select");
+        for (const d of rutina.dias ?? []) sel.appendChild(nuevaOp(d.id, d.nombre));
         if (datos.diaId && ![...(rutina.dias ?? [])].some(d => d.id === datos.diaId)) {
-            selDia.appendChild(nuevaOp(datos.diaId, `${datos.diaId} (ya no está en la rutina)`));
+            sel.appendChild(nuevaOp(datos.diaId, `${datos.diaId} (ya no está en la rutina)`));
         }
+        sel.value = datos.diaId;
+        selDia = sel;
     }
-    selDia.value = datos.diaId;
+    // Lectura ÚNICA del campo: la comparten la recarga de ejercicios, el
+    // onChange y el guardado. La planificada se lee tal cual —el id del plan
+    // NO se recorta, podría llevar espacios y rompería la búsqueda por id—.
+    const valorDia = (): string => libre ? diaTecleado(selDia.value) : selDia.value;
     cD.appendChild(el("div", "gym-et", "Día de la rutina")); cD.appendChild(selDia);
     const cM = el("div", "flex:0 1 120px;");
     const inMin = el("input"); inMin.type = "number"; inMin.min = "0"; inMin.inputMode = "numeric";
@@ -191,7 +174,7 @@ export function formularioSesion(
 
     // Rellena los ejercicios del día con sus objetivos (o con los ya registrados)
     const montarEjercicios = (): void => {
-        const dia = diaPorId(rutina, selDia.value);
+        const dia = diaPorId(rutina, valorDia());
         const definidos = dia?.ejercicios ?? [];
         const previos = new Map<string, EjercicioTrabajo>(
             (datos.ejercicios ?? []).map(e => [e.ejercicioId, e]));
@@ -497,16 +480,9 @@ export function formularioSesion(
     };
 
     selDia.onchange = async () => {
-        // En la libre, «＋ Nuevo día…» pide el nombre y lo da de alta en la lista
-        if (opNuevo && selDia.value === opNuevo.value) {
-            const nombre = (await pedirTexto("＋ Nuevo día de la rutina", ""))?.trim();
-            if (!nombre) { selDia.value = datos.diaId; return; }   // cancelado o vacío
-            const yaEsta = [...selDia.options].find(o => o.value === nombre && o !== opNuevo);
-            if (!yaEsta) selDia.insertBefore(nuevaOp(nombre, nombre), opNuevo);
-            selDia.value = nombre;
-            datos.diaId = nombre;
-            return;
-        }
+        // En la libre el nombre ya se ha tecleado DIRECTO en el campo (el
+        // oninput mantiene diaId): aquí solo se asienta. En la planificada se
+        // pide confirmación antes de recargar los ejercicios del nuevo día.
         const recargar = !libre;   // en la libre no hay objetivos que recargar
         if (recargar && (datos.ejercicios ?? []).length &&
             !(await confirmar("📅 Cambiar de día",
@@ -515,7 +491,7 @@ export function formularioSesion(
             selDia.value = datos.diaId;
             return;
         }
-        datos.diaId = selDia.value;
+        datos.diaId = valorDia();
         if (recargar) montarEjercicios();
     };
 
@@ -535,9 +511,10 @@ export function formularioSesion(
 
         const nueva: Sesion = {
             fecha: f,
-            // `|| ""` es deliberado: con undefined la clave NO se serializa y luego
-            // la reanudación de la sesión guiada no encontraría el guardado en curso.
-            diaId: selDia.value || "",
+            // `valorDia()` normaliza lo tecleado en la libre; `|| ""` es deliberado:
+            // con undefined la clave NO se serializa y luego la reanudación de la
+            // sesión guiada no encontraría el guardado en curso.
+            diaId: valorDia() || "",
             duracionMin: aNumero(inMin.value) ?? "",
             anotaciones: inAnot.value.trim(),
             ejercicios: (datos.ejercicios ?? []).map(e => {
@@ -675,7 +652,7 @@ export function formularioAnotacion(rutina: Rutina, fecha: string, pintar: Pinta
    SIEMPRE en kg y cm. */
 
 export function formularioMedidas(medidas: LecturaNota<MedidasDatos>, pintar: Pintar): void {
-    const m = modal("⚖️ Peso y talla", `se guardan en ${conf().rutaMedidas}`);
+    const m = modal("⚖️ Peso y talla", `se guardan en ${rutaMedidas()}`);
     const u = ultimaMedida(medidas.datos);
     const cF = el("div", "display:flex;gap:10px;flex-wrap:wrap;");
     const cFecha = el("div", "flex:1;min-width:140px;");

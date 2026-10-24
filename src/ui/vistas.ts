@@ -7,7 +7,8 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 
 import type { WorkspaceLeaf } from "obsidian";
-import { aplicacion, conf } from "../estado";
+import { aplicacion } from "../estado";
+import { carpetaDatos, rutaIndice, SUFIJO_MD } from "../ajustes";
 import { toast } from "./componentes";
 import { hojaFormulario } from "./hoja";
 
@@ -66,11 +67,13 @@ export const cerrarPlugin = (): void => {
    Kanban con sus notas); y desde el plugin se vuelve al markdown crudo con el
    botón «abrir como markdown» — siempre en la misma pestaña, sin duplicar. */
 
-/* ¿Es un archivo con vista propia: el índice o una rutina? (Las medidas, los
-   grupos y las plantillas se siguen abriendo como nota normal) */
+/* ¿Es un archivo con vista propia? Identificación por NOMBRE (el sufijo
+   .gym-stone.md dentro de la carpeta de datos, más el índice): así el plugin
+   reconoce lo suyo sin recorrer el vault, y un .md «normal» que dejes ahí
+   (medidas, grupos, plantillas) sigue abriéndose como nota normal. */
 export const esArchivoGym = (ruta: string): boolean =>
-    ruta === conf().rutaIndice
-    || (ruta.startsWith(conf().carpetaDatos + "/") && ruta.endsWith(".md"));
+    ruta === rutaIndice()
+    || (ruta.startsWith(carpetaDatos() + "/") && ruta.endsWith(SUFIJO_MD));
 
 /* Sello: la apertura de markdown que hace ESTE PLUGIN no debe re-convertirse
    (por si setViewState emite file-open). Una vez leído el sello, se borra. */
@@ -87,13 +90,14 @@ export const esMdRecienteDelPlugin = (ruta: string): boolean => {
 /* Convierte UNA pestaña (donde se abrió un archivo del plugin) en la vista
    del plugin de ese archivo: índice → lista; rutina → su dashboard. */
 export const abrirArchivoComoPlugin = async (leaf: WorkspaceLeaf, ruta: string): Promise<boolean> => {
-    if (ruta === conf().rutaIndice) {
+    if (ruta === rutaIndice()) {
         await leaf.setViewState({ type: VISTA_LISTA, active: true, state: {} });
         void aplicacion().workspace.revealLeaf(leaf);
         return true;
     }
-    if (ruta.startsWith(conf().carpetaDatos + "/") && ruta.endsWith(".md")) {
-        const id = ruta.slice(ruta.lastIndexOf("/") + 1, -3);
+    if (ruta.startsWith(carpetaDatos() + "/") && ruta.endsWith(SUFIJO_MD)) {
+        // El id es el nombre SIN el sufijo: <id>.gym-stone.md → <id>
+        const id = ruta.slice(ruta.lastIndexOf("/") + 1, -SUFIJO_MD.length);
         if (!id) return false;
         await leaf.setViewState({ type: VISTA_RUTINA, active: true, state: { rutinaId: id } });
         void aplicacion().workspace.revealLeaf(leaf);

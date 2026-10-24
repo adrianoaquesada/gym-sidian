@@ -8,7 +8,8 @@
 
 import { TFile } from "obsidian";
 import { CONFIG } from "../config";
-import { conf, aplicacion } from "../estado";
+import { aplicacion } from "../estado";
+import { carpetaDatos, SUFIJO_MD } from "../ajustes";
 import { hoy, sumarDias, diffDias } from "../util/fechas";
 import { slug } from "../util/texto";
 import { contenidoNotaDatos, escribirSeguro, leerNotaDatos } from "./archivos";
@@ -41,7 +42,7 @@ export const semanasTotales = (rutina: Rutina): number => {
     return s > 0 ? Math.ceil(s / 7) : (Number(rutina.semanas) || 0);
 };
 
-export const rutaDatosDe = (id: string): string => `${conf().carpetaDatos}/${id}.md`;
+export const rutaDatosDe = (id: string): string => `${carpetaDatos()}/${id}${SUFIJO_MD}`;
 
 /* ── Lectura ────────────────────────────────────────────────────────────── */
 

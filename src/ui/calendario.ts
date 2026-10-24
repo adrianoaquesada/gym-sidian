@@ -192,6 +192,23 @@ interface ParamsCelda {
     pintar: Pintar;
 }
 
+/* Nombre del día que se enseña en una celda de RUTINA LIBRE: no hay plan del
+   que traerlo, así que sale el de las propias sesiones de ese día (su diaId,
+   el nombre que se le dio al registrarlas), igual que en las tablas y en la
+   sesión guiada. Si en una misma fecha conviven varios, el más repetido. */
+const nombreDiaDeSesiones = (sesiones: Sesion[]): string => {
+    const cuenta = new Map<string, number>();
+    let mejor = "", nMejor = 0;
+    for (const s of sesiones) {
+        const n = String(s.diaId ?? "").trim();
+        if (!n) continue;
+        const c = (cuenta.get(n) ?? 0) + 1;
+        cuenta.set(n, c);
+        if (c > nMejor) { nMejor = c; mejor = n; }
+    }
+    return mejor;
+};
+
 const celdaCalendario = ({ clave, numero, fuera, progPorFecha, porDia, rutina, pintar }: ParamsCelda): HTMLDivElement => {
     const diaProg = progPorFecha.get(clave) ?? null;
     const sesiones = porDia.get(clave) ?? [];
@@ -200,24 +217,31 @@ const celdaCalendario = ({ clave, numero, fuera, progPorFecha, porDia, rutina, p
     const anotaciones = (rutina.notasDia ?? []).filter(n => n.fecha === clave);
     const volumen = sesiones.reduce((t, s) => t + volumenSesion(s), 0);
 
-    let fondo = "transparent", borde = "transparent";
-    if (sesiones.length) { fondo = "color-mix(in srgb, " + CONFIG.VERDE + "% 14%, transparent)"; borde = CONFIG.VERDE; }
-    else if (diaProg && pasado) { fondo = "color-mix(in srgb, " + CONFIG.ROJO + "% 12%, transparent)"; borde = CONFIG.ROJO; }
-    else if (diaProg) { borde = CONFIG.NARANJA; }
-    else if (anotaciones.length) { fondo = "var(--background-secondary)"; }
+    // El relleno es SOLO de hoy: los demás días no se colorean (su estado se
+    // distingue por el BORDE: verde = con sesión, rojo = programado pasado,
+    // naranja = pendiente de hoy en adelante)
+    let borde = "transparent";
+    if (sesiones.length) borde = CONFIG.VERDE;
+    else if (diaProg && pasado) borde = CONFIG.ROJO;
+    else if (diaProg) borde = CONFIG.NARANJA;
 
     const cel = el("div", "gym-cel" + (esHoy ? " hoy" : ""));
-    // Hoy: relleno atenuado naranja, apilado debajo del color de estado si lo hay
-    const tinteHoy = `color-mix(in srgb, ${CONFIG.NARANJA}% 15%, transparent)`;
-    cel.style.background = !esHoy ? fondo
-        : fondo === "transparent" ? tinteHoy : `${fondo}, ${tinteHoy}`;
+    // Fondo: HOY en naranja atenuado; los días con anotación, gris suave;
+    // el resto, transparente (su estado lo marca el borde)
+    cel.style.background = esHoy
+        ? `color-mix(in srgb, ${CONFIG.NARANJA} 15%, transparent)`
+        : anotaciones.length ? "var(--background-secondary)"
+        : "transparent";
     cel.style.borderColor = borde;
     if (fuera) cel.classList.add("fuera");                          // colas del mes (CSS)
     if (diaProg && !sesiones.length) cel.classList.add("sin-hacer"); // programado y sin registrar (CSS)
 
     cel.appendChild(el("div", "n", String(numero)));
-    if (diaProg) {
-        const d = el("div", "d", diaProg.nombre);
+    // El nombre del día: en la planificada lo trae el plan (diaProg); en la
+    // libre, el de las sesiones de esa fecha. Se pinta igual en los dos casos.
+    const nomDia = diaProg ? diaProg.nombre : nombreDiaDeSesiones(sesiones);
+    if (nomDia) {
+        const d = el("div", "d", nomDia);
         d.style.color = sesiones.length ? CONFIG.VERDE : (pasado && borde === CONFIG.ROJO ? CONFIG.ROJO : CONFIG.NARANJA);
         cel.appendChild(d);
     }
@@ -231,7 +255,7 @@ const celdaCalendario = ({ clave, numero, fuera, progPorFecha, porDia, rutina, p
         cel.appendChild(el("div", "gym-cel-nota", "📝"));
     }
 
-    cel.title = `${clave}${diaProg ? ` · programado: ${diaProg.nombre}` : esLibre(rutina) ? "" : " · descanso"} · ${sesiones.length} sesión(es)`;
+    cel.title = `${clave}${diaProg ? ` · programado: ${diaProg.nombre}` : nomDia ? ` · día: ${nomDia}` : esLibre(rutina) ? "" : " · descanso"} · ${sesiones.length} sesión(es)`;
     cel.onclick = () => detalleDia(rutina, clave, pintar);
     return cel;
 };

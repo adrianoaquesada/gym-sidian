@@ -2,31 +2,35 @@
    Gestor de rutinas — el dashboard de una rutina existente.
 
    Dibuja, en este orden:
-     1. Detalles   → KPIs, estructura y botones (editar, pausar/finalizar,
-                     duplicar, guardar como plantilla, extender)
+     0. Navegación → carrusel de una línea, sin barra de desplazamiento:
+                     volver, editar, sesión guiada, registrar sesión,
+                     anotación, medidas, estadísticas e historial (las dos
+                     últimas se abren como popup) y, al FINAL, empujado a la
+                     derecha, el temporizador
+     1. Detalles   → KPIs y estructura (si la rutina pasó su fin, «Extender»)
      2. Calendario → mensual y navegable, con clic en un día para editar
-     3. Registro   → sesión guiada, sesión, anotación y medidas
-     4. Estadísticas
-     5. Historial filtrable
+     3. Registro   → YA NO EXISTE: sus botones (sesión, anotación y medidas)
+                      están en el carrusel de navegación de arriba
    ═══════════════════════════════════════════════════════════════════════════ */
 
 import { CONFIG, DIAS_LARGO } from "../config";
-import { conf } from "../estado";
+import { rutaMedidas } from "../ajustes";
 import {
-    catalogoEjercicios, escribirPlantilla, escribirRutina, esLibre,
-    idNuevo, leerMedidas, leerRutina, medidasVacias, plantillaDeRutina,
-    plantillaExiste, resumenLibre, semanaActual, semanasTotales,
-    transcurrida,
+    catalogoEjercicios, escribirRutina, esLibre,
+    leerMedidas, leerRutina, medidasVacias, resumenLibre, semanaActual,
+    semanasTotales, transcurrida,
 } from "../datos";
-import { clonarJSON, fechaLegible, hoy, limpiarNombre, msgError, sumarDias } from "../util";
+import { fechaLegible, hoy, msgError, sumarDias } from "../util";
 import { pesoTexto } from "../unidades";
 import type { LecturaNota, MedidasDatos, Rutina } from "../tipos";
-import { btn, el, KPI, modal, pedirTexto, toast } from "./componentes";
-import { pintarCabecera } from "./cabecera";
-import { abrirFormulario, abrirLista, abrirRutina } from "./vistas";
+import { btn, el, KPI, modal, ponerX, toast } from "./componentes";
+import { pintarCabecera, pintarNavegacion } from "./cabecera";
+import { abrirFormulario, abrirLista } from "./vistas";
+import { abrirTemporizador } from "./temporizador";
+import { elegirDiaGuiada } from "./sesion-guiada";
 import { fijarPintar, type Pintar } from "./pintar";
 import { seccionCalendario } from "./calendario";
-import { seccionRegistro } from "./registro";
+import { abrirRegistro, formularioAnotacion, formularioMedidas } from "./registro";
 import { seccionEstadisticas } from "./estadisticas";
 import { seccionHistorial } from "./historial";
 
@@ -48,15 +52,15 @@ export const pintarDashboard = async (cont: HTMLElement, rutinaId: string): Prom
     if (medidas.error) {
         // Un problema en medidas.md no debe tumbar el dashboard de la rutina
         toast("⚠️ " + medidas.error, false);
-        medidas = { datos: medidasVacias(), ruta: conf().rutaMedidas };
+        medidas = { datos: medidasVacias(), ruta: rutaMedidas() };
     }
 
     const cont2 = el("div", "gym-g");   // line-height:1.45 en CSS
     cont.appendChild(cont2);
 
-    // Cabecera naranja = zona de navegación: «Rutinas › 🏋️ Esta rutina»
+    // Cabecera naranja: el título de esta pantalla («casa»); la navegación
+    // vive en la fila de pestañas de debajo
     pintarCabecera(cont2, [
-        { texto: "Rutinas", ir: () => void abrirLista() },
         { texto: `🏋️ ${rutina.nombre || "Sin nombre"}` },
     ], {
         subtitulo: `${rutina.objetivo ? rutina.objetivo + " · " : ""}` +
@@ -65,13 +69,43 @@ export const pintarDashboard = async (cont: HTMLElement, rutinaId: string): Prom
 
     const pintar = () => pintarDashboard(cont, rutinaId);
 
+    // Carrusel de navegación de la rutina (una línea, sin barra de
+    // desplazamiento): volver, editar, la sesión guiada del día y los botones
+    // de registro (sesión, anotación y medidas); el temporizador cierra la
+    // fila, empujado al final a la derecha. Estadísticas e Historial siguen
+    // abriéndose como popup (mismo patrón que editar rutina)
+    pintarNavegacion(cont2, [
+        { texto: "← Main", alPulsar: () => void abrirLista() },
+        { texto: "✏️ Editar", alPulsar: () => void abrirFormulario({ modo: "editar", rutinaId }) },
+        { texto: "🎯 Empezar sesión guiada", alPulsar: () => elegirDiaGuiada(rutina, pintar), principal: true },
+        { texto: "＋ Registrar sesión", alPulsar: () => abrirRegistro(rutina, { fecha: hoy(), diaId: rutina.dias?.[0]?.id }, pintar) },
+        { texto: "📝 Anotación", alPulsar: () => formularioAnotacion(rutina, hoy(), pintar) },
+        { texto: "⚖️ Registrar medidas", alPulsar: () => formularioMedidas(medidas, pintar) },
+        { texto: "📈 Estadísticas", alPulsar: () => abrirEstadisticas(rutina, medidas) },
+        { texto: "🗓 Historial", alPulsar: () => abrirHistorial(rutina) },
+        { texto: "⏱ Temporizador", alPulsar: () => void abrirTemporizador(), derecha: true },
+    ]);
+
     seccionDetalles(cont2, rutina, pintar);
     seccionCalendario(cont2, rutina, pintar);
-    seccionRegistro(cont2, rutina, pintar, medidas);
-    seccionEstadisticas(cont2, rutina, medidas);
-    seccionHistorial(cont2, rutina);
 
     fijarPintar(pintar);   // los modales llaman a esto tras mutar datos
+};
+
+/* Estadísticas e Historial ya no se pintan en el cuerpo del dashboard: se
+   abren como popup con su ✕ (como editar rutina o el temporizador). El
+   cuerpo de cada sección va entero al modal —sin caja colapsable— porque el
+   título y el cierre los pone el propio modal. */
+const abrirEstadisticas = (rutina: Rutina, medidas: LecturaNota<MedidasDatos>): void => {
+    const m = modal("📈 Estadísticas", rutina.nombre);
+    ponerX(m);
+    seccionEstadisticas(m.caja, rutina, medidas);
+};
+
+const abrirHistorial = (rutina: Rutina): void => {
+    const m = modal("🗓 Historial", rutina.nombre);
+    ponerX(m);
+    seccionHistorial(m.caja, rutina);
 };
 
 const pintarError = (cont: HTMLElement, msg: string): void => {
@@ -152,18 +186,13 @@ const seccionDetalles = (c: HTMLElement, rutina: Rutina, pintar: Pintar): void =
         c.appendChild(est);
     }
 
-    // Botones de acción (los callbacks devuelven promesa: se descartan con `void`)
-    const acciones = el("div", "gym-botones");
-    acciones.appendChild(btn("✏️ Editar rutina", "", () => void abrirFormulario({ modo: "editar", rutinaId: rutina.id })));
-    acciones.appendChild(btn(
-        rutina.estado === "activa" ? "⏸ Pausar" : rutina.estado === "pausada" ? "▶ Reanudar" : "🔄 Marcar como activa",
-        "", () => void cambiarEstado(rutina, pintar)));
-    if (rutina.estado !== "finalizada") acciones.appendChild(btn("🏁 Finalizar", "", () => void cambiarEstado(rutina, pintar)));
-    acciones.appendChild(btn("📄 Duplicar", "", () => void duplicar(rutina)));
-    // Una rutina libre no tiene estructura que plantillear
-    if (!esLibre(rutina)) acciones.appendChild(btn("📦 Guardar como plantilla", "", () => void guardarComoPlantilla(rutina)));
-    if (transcurrida(rutina)) acciones.appendChild(btn("➕ Extender 4 semanas", "", () => void extender(rutina, pintar)));
-    c.appendChild(acciones);
+    // Acción puntual que solo aparece si la rutina ya pasó su fecha de fin
+    // (el resto de acciones vive en la fila de navegación de arriba)
+    if (transcurrida(rutina)) {
+        const acciones = el("div", "gym-botones");
+        acciones.appendChild(btn("➕ Extender 4 semanas", "", () => void extender(rutina, pintar)));
+        c.appendChild(acciones);
+    }
 };
 
 const estadoTxt = (r: Rutina): string =>
@@ -182,27 +211,6 @@ const barraAvance = (avance: number): HTMLSpanElement => {
     return marco;
 };
 
-const cambiarEstado = async (rutina: Rutina, pintar: Pintar): Promise<void> => {
-    const m = modal("Estado de la rutina", rutina.nombre);
-    const fila = el("div", "gym-botones");
-    const estados: [string, string][] = [["activa", "🟢 Activa"], ["pausada", "⏸ Pausada"], ["finalizada", "🏁 Finalizada"]];
-    for (const [valor, texto] of estados) {
-        fila.appendChild(btn(texto, rutina.estado === valor ? "primario" : "", async () => {
-            try {
-                rutina.estado = valor as Rutina["estado"];
-                await escribirRutina(rutina);      // guarda el archivo y su fila en el índice
-                m.cerrar();
-                toast(`✅ Estado: ${valor}`);
-                await pintar();
-            } catch (e: unknown) {
-                console.error("[Gym Stone estado]", e);
-                toast("⚠️ No pude cambiar el estado: " + msgError(e), false);
-            }
-        }));
-    }
-    m.caja.appendChild(fila);
-};
-
 const extender = async (rutina: Rutina, pintar: Pintar): Promise<void> => {
     try {
         rutina.fin = sumarDias(rutina.fin, 28);
@@ -215,44 +223,4 @@ const extender = async (rutina: Rutina, pintar: Pintar): Promise<void> => {
         console.error("[Gym Stone extender]", e);
         toast("⚠️ No pude extender la rutina: " + msgError(e), false);
     }
-};
-
-/* Duplicar: crea otro archivo de datos con el mismo plan (sin registros) y su
-   fila en el índice, y abre la copia en su pestaña. */
-const duplicar = async (rutina: Rutina): Promise<void> => {
-    const nombre = (await pedirTexto("Nombre de la copia", `${rutina.nombre} (copia)`)) ?? null;
-    if (nombre === null) return;
-    const limpio = limpiarNombre(nombre);
-    if (!limpio) { toast("⚠️ El nombre de la copia está vacío.", false); return; }
-    const copia: Rutina = clonarJSON(rutina);
-    copia.id = await idNuevo(limpio);
-    copia.nombre = limpio;
-    copia.sesiones = [];         // la copia arranca sin registros
-    copia.notasDia = [];
-    copia.estado = "activa";
-    copia.creado = hoy();
-    copia.modificado = hoy();
-    try {
-        const ruta = await escribirRutina(copia);
-        toast(`✅ Rutina duplicada → ${ruta}`);
-        await abrirRutina(copia.id);
-    } catch (e: unknown) {
-        console.error("[Gym Stone duplicar]", e);
-        toast("⚠️ No pude duplicar: " + msgError(e), false);
-    }
-};
-
-const guardarComoPlantilla = async (rutina: Rutina): Promise<void> => {
-    const nombre = (await pedirTexto("Nombre de la plantilla", rutina.nombre)) ?? null;
-    if (nombre === null) return;
-    const limpio = limpiarNombre(nombre);
-    if (!limpio) { toast("⚠️ El nombre de la plantilla está vacío.", false); return; }
-    if (plantillaExiste(limpio)) {
-        toast(`⚠️ Ya existe la plantilla «${limpio}.md». No la piso: elige otro nombre o bórrala/renómbrala primero.`, false);
-        return;
-    }
-    try {
-        const ruta = await escribirPlantilla(limpio, plantillaDeRutina(rutina));
-        toast(`✅ Plantilla guardada → ${ruta}`);
-    } catch (e: unknown) { toast("⚠️ No pude guardar la plantilla: " + msgError(e), false); }
 };

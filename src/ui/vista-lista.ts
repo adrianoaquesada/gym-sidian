@@ -1,42 +1,65 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   La pestaña inicial: «Rutinas».
+   La pestaña inicial: «Main».
 
-   Es el índice hecho interfaz: la lista de todas las rutinas (nombre, estado,
-   fechas, semana en curso y sesiones hechas) con sus acciones, más un resumen
-   de las medidas corporales. No lee cada archivo de datos: todo sale del
-   índice (Rutinas.md), que se regenera solo al guardar.
+   Es el índice hecho interfaz, con tres secciones a pantalla completa que se
+   cambian desde el carrusel de navegación (sin barra de desplazamiento):
+
+     · Rutinas      → los KPIs del resumen + la lista de todas las rutinas
+                      (nombre, estado, fechas, semana en curso y sesiones
+                      hechas). ES LA SECCIÓN POR DEFECTO al abrir el plugin.
+     · Medidas e IMC→ peso corporal, evolución e IMC (la misma sección que en
+                      «rutina/estadisticas»).
+     · Ejercicios   → el catálogo global, también a pantalla completa.
+
+   No lee cada archivo de datos: todo sale del índice (Rutinas.md), que se
+   regenera solo al guardar.
    ═══════════════════════════════════════════════════════════════════════════ */
 
-import { ItemView, type WorkspaceLeaf } from "obsidian";
+import { ItemView, type ViewStateResult, type WorkspaceLeaf } from "obsidian";
 import { CONFIG } from "../config";
-import { aplicacion, conf } from "../estado";
+import { aplicacion } from "../estado";
+import { carpetaDatos, rutaIndice, rutaMedidas } from "../ajustes";
 import { borrarRutina, leerIndice, leerMedidas, leerRutina, ultimaMedida } from "../datos";
 import type { IndiceRutina } from "../tipos";
 import { diffDias, fechaLegible, hoy, msgError } from "../util";
-import { fijarUnidadPeso, pesoActual, pesoTexto, tallaTexto, unidadContraria } from "../unidades";
-import { KPI, btn, caja, confirmar, el, toast } from "./componentes";
-import { pintarCabecera } from "./cabecera";
-import { gestionarEjercicios } from "./ejercicios-ui";
+import { pesoTexto, tallaTexto } from "../unidades";
+import { KPI, btn, confirmar, el, toast } from "./componentes";
+import { pintarCabecera, pintarNavegacion, pintarTituloSeccion, type BotonNav } from "./cabecera";
+import { pintarGestionEjercicios } from "./ejercicios-ui";
 import { formularioMedidas } from "./registro";
+import { seccionMedidas } from "./estadisticas";
 import { elegirDiaGuiada } from "./sesion-guiada";
 import { abrirTemporizador } from "./temporizador";
-import { VISTA_LISTA, abrirComoMarkdown, abrirFormulario, abrirRutina } from "./vistas";
+import { VISTA_LISTA, abrirFormulario, abrirRutina } from "./vistas";
+
+/* Las secciones de Main, en el orden del carrusel de navegación. */
+type SeccionMain = "rutinas" | "medidas" | "ejercicios";
 
 export class VistaLista extends ItemView {
     constructor(leaf: WorkspaceLeaf) { super(leaf); }
 
     getViewType(): string { return VISTA_LISTA; }
-    getDisplayText(): string { return "Rutinas"; }
+    getDisplayText(): string { return "Main"; }
     getIcon(): string { return "dumbbell"; }
+
+    /* Al llegar a Main (desde el plugin, desde una rutina o al restaurar la
+       pestaña) se vuelve a la sección de por defecto: «📋 Rutinas». Los
+       cambios de vault no pasan por aquí, así que repintar no pierde la
+       sección en la que estabas. */
+    async setState(state: Record<string, unknown>, result: ViewStateResult): Promise<void> {
+        await super.setState(state, result);
+        this.seccion = "rutinas";
+        await this.pintar();
+    }
 
     async onOpen(): Promise<void> {
         // Se repinta sola cuando cambia algo relevante en el vault (índice,
         // medidas o un archivo de rutina): los datos que lleguen de fuera se
         // ven al momento, sin recargar Obsidian.
         const relevante = (ruta: string): boolean =>
-            ruta === conf().rutaIndice
-            || ruta === conf().rutaMedidas
-            || ruta.startsWith(conf().carpetaDatos + "/");
+            ruta === rutaIndice()
+            || ruta === rutaMedidas()
+            || ruta.startsWith(carpetaDatos() + "/");
         const alCambiar = (f: { path: string }) => { if (relevante(f.path)) void this.pintar(); };
         this.registerEvent(aplicacion().vault.on("modify", alCambiar));
         this.registerEvent(aplicacion().vault.on("create", alCambiar));
@@ -50,18 +73,14 @@ export class VistaLista extends ItemView {
     private acciones(): void {
         if (this.accionesHechas) return;
         this.accionesHechas = true;
-        // Solo recargar y kg↔lb: crear y registrar medidas viven dentro del
-        // panel (sus botones), aquí no se duplican.
+        // Solo recargar: los accesos de siempre (secciones, nueva rutina,
+        // temporizador, medidas) viven en el carrusel de navegación, y
+        // «alternar pesos» y «abrir como markdown» en el menú ⋮ (main.ts).
         this.addAction("refresh-cw", "Recargar lista", () => void this.pintar());
-        this.addAction("timer", "⏱ Temporizador libre (cuenta atrás)", () => abrirTemporizador());
-        this.addAction("arrow-left-right", "Alternar pesos kg ↔ libras", () => {
-            fijarUnidadPeso(unidadContraria());
-            toast(`⚖️ Pesos en ${pesoActual()}`);
-            void this.pintar();
-        });
-        // Arriba-derecha: ver esta misma pestaña como la nota cruda
-        this.addAction("file-text", "Abrir Rutinas.md como markdown", () => abrirComoMarkdown(conf().rutaIndice));
     }
+
+    /* Nota cruda de esta pantalla (para «abrir como markdown» del menú ⋮) */
+    rutaMarkdown(): string { return rutaIndice(); }
 
     /* ── Semana en curso, calculada solo con las fechas del índice ── */
     private semanaDe(f: IndiceRutina): number {
@@ -78,6 +97,16 @@ export class VistaLista extends ItemView {
         f.estado === "pausada" ? "var(--text-muted)"
             : f.estado === "finalizada" || this.semanaDe(f) > f.semanas ? CONFIG.AZUL : CONFIG.VERDE;
 
+    /* Sección que se muestra ahora. Rutinas es la que arranca al abrir el
+       plugin (o al volver a Main desde una rutina). No viaja en el estado de
+       la pestaña: siempre se vuelve a la que tiene sentido ver. */
+    private seccion: SeccionMain = "rutinas";
+
+    private irA(s: SeccionMain): Promise<void> {
+        this.seccion = s;
+        return this.pintar();
+    }
+
     async pintar(): Promise<void> {
         const raiz = this.contentEl;
         raiz.empty();
@@ -90,9 +119,42 @@ export class VistaLista extends ItemView {
         const cont = raiz;
 
         // Cabecera naranja: el título de esta pantalla («casa»)
-        pintarCabecera(cont, [{ texto: "🏋️ Rutinas" }]);
+        pintarCabecera(cont, [{ texto: "🏋️ Main" }]);
 
+        // Carrusel de navegación: las tres secciones de Main, la acción
+        // principal (según la sección) y, al final, a la derecha, el
+        // temporizador. En «Ejercicios» no hay acción principal: el catálogo
+        // no crea rutinas, así que el botón desaparece.
+        const botones: BotonNav[] = [
+            { texto: "📋 Rutinas", activo: this.seccion === "rutinas",
+              alPulsar: () => void this.irA("rutinas") },
+            { texto: "⚖️ Medidas e IMC", activo: this.seccion === "medidas",
+              alPulsar: () => void this.irA("medidas") },
+            { texto: "🗂 Ejercicios", activo: this.seccion === "ejercicios",
+              alPulsar: () => void this.irA("ejercicios") },
+        ];
+        // En «Medidas e IMC» la acción principal registra medidas; en
+        // «Rutinas», crea una rutina nueva; en «Ejercicios», ninguna.
+        if (this.seccion === "medidas") {
+            botones.push({ texto: "＋ Registrar medidas", principal: true, alPulsar: () => void this.abrirMedidas() });
+        } else if (this.seccion !== "ejercicios") {
+            botones.push({ texto: "＋ Nueva rutina", principal: true, alPulsar: () => void abrirFormulario({ modo: "crear" }) });
+        }
+        botones.push({ texto: "⏱ Temporizador", alPulsar: () => void abrirTemporizador(), derecha: true });
+        pintarNavegacion(cont, botones);
+
+        if (this.seccion === "medidas") return this.pintarMedidas(cont);
+        if (this.seccion === "ejercicios") return this.pintarEjercicios(cont);
+        return this.pintarRutinas(cont);
+    }
+
+    /* ── Sección 1 · Rutinas (la de por defecto) ──
+       Igual que «Medidas e IMC»: de arriba a abajo, título con subrayado,
+       los KPIs del resumen y DEBAJO la lista. Sin el marco que antes
+       rodeaba toda la sección. */
+    private async pintarRutinas(cont: HTMLElement): Promise<void> {
         const { indice, error } = await leerIndice();
+        pintarTituloSeccion(cont, "📋 Rutinas", "Pulsa una rutina para abrir su dashboard");
         if (error) {
             cont.createDiv({
                 cls: "gym-error-vista",
@@ -100,7 +162,7 @@ export class VistaLista extends ItemView {
             });
         }
 
-        // ── Resumen ──
+        // ── Los datos de la sección: resumen del vault y de las medidas ──
         const resumen = cont.createDiv({ cls: "gym-kpis" });
         const activas = indice.rutinas.filter(f => f.estado === "activa").length;
         const totalSesiones = indice.rutinas.reduce((n, f) => n + (f.sesiones || 0), 0);
@@ -122,30 +184,48 @@ export class VistaLista extends ItemView {
             resumen.appendChild(KPI("IMC", ult.imc.toFixed(1), CONFIG.VERDE));
         }
 
-        // ── Lista de rutinas ──
-        const c = caja(cont, "📋 Rutinas", "Pulsa una rutina para abrir su dashboard");
-
-        // Acciones visibles dentro del panel (además de los iconos de cabecera)
-        const filaAcciones = el("div", "gym-botones");
-        filaAcciones.appendChild(btn("＋ Nueva rutina", "primario", () => void abrirFormulario({ modo: "crear" })));
-        filaAcciones.appendChild(btn("⏱ Temporizador", "", () => abrirTemporizador()));
-        filaAcciones.appendChild(btn("⚖️ Registrar medidas", "", () => void this.abrirMedidas()));
-        filaAcciones.appendChild(btn("🗂 Ejercicios", "", () => gestionarEjercicios()));
-        c.appendChild(filaAcciones);
+        // ── La lista de rutinas ──
         if (!indice.rutinas.length) {
-            c.createDiv({
+            cont.createDiv({
                 cls: "gym-vacio",
                 text: "🏋️ Aún no hay rutinas: pulsa «＋ Nueva rutina» para crear la primera.",
             });
             return;
         }
 
-        const lista = c.createDiv({ cls: "gym-lista-rutinas" });
+        const lista = cont.createDiv({ cls: "gym-lista-rutinas" });
         // Las activas primero; dentro de cada grupo, las más recientes
         const orden = [...indice.rutinas].sort((a, b) =>
             (a.estado === "activa" ? 0 : a.estado === "pausada" ? 1 : 2) - (b.estado === "activa" ? 0 : b.estado === "pausada" ? 1 : 2)
             || (b.modificada ?? "").localeCompare(a.modificada ?? ""));
         for (const f of orden) lista.appendChild(this.fila(f));
+    }
+
+    /* ── Sección 2 · Medidas e IMC ──
+       La misma sección que «📈 Estadísticas» dentro de una rutina (peso
+       corporal: evolución e IMC), a pantalla completa. */
+    private async pintarMedidas(cont: HTMLElement): Promise<void> {
+        pintarTituloSeccion(cont, "⚖️ Medidas e IMC", "peso corporal, evolución e IMC");
+        const medidas = await leerMedidas();
+        if (medidas.error) {
+            cont.createDiv({
+                cls: "gym-error-vista",
+                text: "⚠️ " + medidas.error + " — no lo sobrescribo: repáralo a mano (o bórralo y se regenerará vacío).",
+            });
+            return;
+        }
+        // Sin encabezado propio: el título de la sección («⚖️ Medidas e IMC»)
+        // ya pone Main, y su línea punteada no debe aparecer debajo
+        seccionMedidas(cont, medidas, { titulo: false });
+    }
+
+    /* ── Sección 3 · Ejercicios ──
+       El mismo gestor del catálogo, pero ocupando todo el espacio de la
+       pestaña en vez de abrirse como popup. */
+    private pintarEjercicios(cont: HTMLElement): void {
+        pintarTituloSeccion(cont, "🗂 Ejercicios", "nombres y grupos musculares de todo el vault");
+        const caja = cont.createDiv({ cls: "gym-ejercicios-inline" });
+        pintarGestionEjercicios(caja);
     }
 
     /* Una fila de la lista: nombre + estado + fechas + progreso, con editar y borrar */

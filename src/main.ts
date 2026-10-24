@@ -7,16 +7,21 @@
    superpuesta.
 
    Dónde están los datos (notas .md con bloques ```json```: legibles a mano,
-   git-friendly; el motor avisa y no sobrescribe si alguien lo rompe):
+   git-friendly; el motor avisa y no sobrescribe si alguien lo rompe): todo
+   dentro de UNA carpeta raíz (por defecto gym-stone/, ajustable), con los
+   datos en minúsculas y marcados con el sufijo .gym-stone.md:
 
-     · Rutinas.md            el índice: una fila por rutina (fecha, id, nombre, estado)
-     · Datos/rutinas/<id>.md cada rutina con TODO: plan + sesiones + anotaciones
-     · Datos/medidas.md      peso y talla (globales)
-     · Plantillas/*.md       plantillas reutilizables
+     · rutinas.gym-stone.md                 el índice: una fila por rutina
+     · datos/rutinas/<id>.gym-stone.md      cada rutina con TODO (plan + sesiones)
+     · datos/medidas.gym-stone.md           peso y talla (globales)
+     · datos/ejercicios.gym-stone.md        grupos musculares
+     · plantillas/*.md                      plantillas reutilizables (a mano)
+
+   (Las rutas exactas salen de ajustes.ts.)
    ═══════════════════════════════════════════════════════════════════════════ */
 
-import { MarkdownView, Plugin, type WorkspaceLeaf } from "obsidian";
-import { normalizarAjustes, type AjustesGym } from "./ajustes";
+import { MarkdownView, Plugin, type EventRef, type Menu, type WorkspaceLeaf } from "obsidian";
+import { normalizarAjustes, rutaIndice, type AjustesGym } from "./ajustes";
 import { iniciarEstado, actualizarAjustes } from "./estado";
 import { limpiarOverlays, toast } from "./ui/componentes";
 import { abrirTemporizador, pararTemporizador } from "./ui/temporizador";
@@ -24,18 +29,26 @@ import { GymStoneTab } from "./ui/tabla-ajustes";
 import { VistaLista } from "./ui/vista-lista";
 import { VistaRutina } from "./ui/vista-rutina";
 import { VistaForm } from "./ui/vista-form";
+import { fijarUnidadPeso, pesoActual, unidadContraria } from "./unidades";
 import {
     VISTA_FORM, VISTA_LISTA, VISTA_RUTINA,
-    abrirArchivoComoPlugin, abrirFormulario, abrirLista,
+    abrirArchivoComoPlugin, abrirFormulario, abrirLista, abrirComoMarkdown,
     esArchivoGym, esMdRecienteDelPlugin,
 } from "./ui/vistas";
+
+/* «leaf-menu»: el evento que Obsidian dispara al abrir el menú ⋮ de una
+   pestaña (comprobado en el asar: workspace.trigger("leaf-menu", menu, leaf)).
+   El runtime lo trae, pero la librería de tipos pública aún no lo declara:
+   por eso este enganche tipado con cast. */
+interface WorkspaceConLeafMenu {
+    on(name: "leaf-menu", callback: (menu: Menu, leaf: WorkspaceLeaf) => void): EventRef;
+}
 
 export default class GymStone extends Plugin {
     ajustes: AjustesGym = normalizarAjustes(null);
 
     async onload(): Promise<void> {
-        const datos = ((await this.loadData()) ?? {}) as Partial<AjustesGym> & { avisoListo?: boolean };
-        this.ajustes = normalizarAjustes(datos);
+        this.ajustes = normalizarAjustes(((await this.loadData()) ?? {}) as Record<string, unknown>);
         iniciarEstado(this.app, this.ajustes);
 
         /* ── Las pantallas del plugin ── */
@@ -63,6 +76,32 @@ export default class GymStone extends Plugin {
         /* ── Y al revés: botón «abrir con el plugin» en la cabecera (arriba-
               derecha) de las pestañas markdown de esos mismos archivos ── */
         this.registerEvent(this.app.workspace.on("active-leaf-change", leaf => this.marcarVistaMarkdownGym(leaf)));
+
+        /* ── Menú ⋮ de las pestañas del plugin: aquí viven «alternar pesos» y
+              «abrir como markdown» (fuera de la barra de iconos, a petición).
+              Ver WorkspaceConLeafMenu: el evento existe en runtime y los
+              tipos aún no lo declaran. ── */
+        this.registerEvent(
+            (this.app.workspace as unknown as WorkspaceConLeafMenu).on("leaf-menu", (menu, leaf) => {
+                const v = leaf.view;
+                if (!(v instanceof VistaLista || v instanceof VistaRutina)) return;
+                menu.addItem(it => it
+                    .setTitle("Alternar pesos kg ↔ libras")
+                    .setIcon("arrow-left-right")
+                    .onClick(() => {
+                        if (!fijarUnidadPeso(unidadContraria())) return;   // ya estaba en esa unidad
+                        toast(`⚖️ Pesos en ${pesoActual()}`);
+                        this.repintarVistasGym();
+                    }));
+                const ruta = v.rutaMarkdown();
+                if (ruta) {
+                    menu.addItem(it => it
+                        .setTitle("Abrir como markdown")
+                        .setIcon("file-text")
+                        .onClick(() => abrirComoMarkdown(ruta)));
+                }
+            }),
+        );
 
         /* ── Comandos ── */
         this.addCommand({
@@ -92,9 +131,9 @@ export default class GymStone extends Plugin {
                 this.marcarVistaMarkdownGym(hoja);
             }
             try {
-                if (!datos.avisoListo && !this.app.vault.getAbstractFileByPath(this.ajustes.rutaIndice)) {
+                if (!this.ajustes.avisoListo && !this.app.vault.getAbstractFileByPath(rutaIndice())) {
                     toast("🏋️ Gym Stone: pulsa la campana de mancuerna (izquierda) o el comando «Abrir la lista de rutinas».");
-                    void this.saveData({ ...this.ajustes, avisoListo: true });
+                    void this.guardarAjustes({ ...this.ajustes, avisoListo: true });
                 }
             } catch { /* sin datos no hay nada que avisar */ }
         });

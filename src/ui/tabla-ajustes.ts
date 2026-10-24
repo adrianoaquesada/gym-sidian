@@ -19,32 +19,12 @@ export class GymStoneTab extends PluginSettingTab {
         containerEl.empty();
 
         new Setting(containerEl)
-            .setName("Archivo índice")
-            .setDesc("Una sola nota con la lista de todas las rutinas (fecha, ID, nombre y estado). Se regenera solo al guardar.")
-            .addText(t => t.setPlaceholder("08 Gimnasio/Rutinas.md")
-                .setValue(conf().rutaIndice)
-                .onChange(async v => this.guardar("rutaIndice", v)));
-
-        new Setting(containerEl)
-            .setName("Carpeta de datos")
-            .setDesc("Un archivo .md por rutina con su definición y sus sesiones.")
-            .addText(t => t.setPlaceholder("08 Gimnasio/datos/rutinas")
-                .setValue(conf().carpetaDatos)
-                .onChange(async v => this.guardar("carpetaDatos", v)));
-
-        new Setting(containerEl)
-            .setName("Archivo de medidas")
-            .setDesc("Peso y talla, globales para todas las rutinas.")
-            .addText(t => t.setPlaceholder("08 Gimnasio/Datos/medidas.md")
-                .setValue(conf().rutaMedidas)
-                .onChange(async v => this.guardar("rutaMedidas", v)));
-
-        new Setting(containerEl)
-            .setName("Carpeta de plantillas")
-            .setDesc("(Guardar como plantilla) crea estructuras reutilizables.")
-            .addText(t => t.setPlaceholder("08 Gimnasio/plantillas")
-                .setValue(conf().carpetaPlantillas)
-                .onChange(async v => this.guardar("carpetaPlantillas", v)));
+            .setName("Carpeta raíz")
+            .setDesc("Toda la vida del plugin en UNA carpeta (en minúsculas): rutinas.gym-stone.md (índice), datos/rutinas/ (una rutina por archivo), " +
+                "datos/medidas.gym-stone.md, datos/ejercicios.gym-stone.md y plantillas/. Cambiarla no mueve los archivos existentes.")
+            .addText(t => t.setPlaceholder("gym-stone")
+                .setValue(conf().carpetaRaiz)
+                .onChange(async v => this.guardar("carpetaRaiz", v)));
 
         new Setting(containerEl)
             .setName("Unidad de talla")
@@ -71,24 +51,9 @@ export class GymStoneTab extends PluginSettingTab {
     override getSettingDefinitions(): SettingDefinitionItem[] {
         return [
             {
-                name: "Archivo índice",
-                desc: "Una sola nota con la lista de todas las rutinas (fecha, ID, nombre y estado). Se regenera solo al guardar.",
-                control: { key: "rutaIndice", type: "text", placeholder: "08 Gimnasio/Rutinas.md" },
-            },
-            {
-                name: "Carpeta de datos",
-                desc: "Un archivo .md por rutina con su definición y sus sesiones.",
-                control: { key: "carpetaDatos", type: "text", placeholder: "08 Gimnasio/datos/rutinas" },
-            },
-            {
-                name: "Archivo de medidas",
-                desc: "Peso y talla, globales para todas las rutinas.",
-                control: { key: "rutaMedidas", type: "text", placeholder: "08 Gimnasio/Datos/medidas.md" },
-            },
-            {
-                name: "Carpeta de plantillas",
-                desc: "(Guardar como plantilla) crea estructuras reutilizables.",
-                control: { key: "carpetaPlantillas", type: "text", placeholder: "08 Gimnasio/plantillas" },
+                name: "Carpeta raíz",
+                desc: "Toda la vida del plugin en UNA carpeta (en minúsculas): rutinas.gym-stone.md (índice), datos/rutinas/ (una rutina por archivo), datos/medidas.gym-stone.md, datos/ejercicios.gym-stone.md y plantillas/. Cambiarla no mueve los archivos existentes.",
+                control: { key: "carpetaRaiz", type: "text", placeholder: "gym-stone" },
             },
             {
                 name: "Unidad de talla",

@@ -6,12 +6,13 @@
    fichero hermano de medidas.md — fuera de la carpeta de rutinas.
    ═══════════════════════════════════════════════════════════════════════════ */
 
-import { conf } from "../estado";
+import { rutaGrupos } from "../ajustes";
 import { contenidoNotaDatos, escribirSeguro, leerNotaDatos } from "./archivos";
 import type { GruposDatos, LecturaNota } from "../tipos";
 
-// Vive al lado de medidas.md (mismo directorio, otro fichero)
-export const rutaGrupos = (): string => conf().rutaMedidas.replace(/[^/]+$/, "ejercicios.md");
+// Vive al lado de medidas.md (mismo directorio, otro fichero). La ruta
+// concreta sale de ajustes (raíz única); aquí se reexporta.
+export { rutaGrupos };
 
 // Memoria: el buscador pinta de golpe el mapa y el fichero se lee en segundo
 // plano (mismo criterio que el catálogo de todas las rutinas). Se revalida al

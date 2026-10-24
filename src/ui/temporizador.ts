@@ -6,9 +6,10 @@
    comando «Abrir el temporizador». Es la suma de tres referencias: el anillo
    circular con la hora a la que sonará, el ajuste a mano de h/m/s y los
    presets de un toque —en carrusel lateral—, más los controles del descanso
-   de la sesión guiada (−15 s, ＋15 s…). El botón principal lo es TODO: arranca
-   con los campos puestos y, mientras corre, se convierte en pausa y en
-   reanudar; no hay un botón de pausa aparte.
+   de la sesión guiada (−15 s, ＋15 s…). Ni los presets arrancan: solo fijan
+   la duración; la cuenta atrás la pone en marcha el botón principal, que
+   mientras corre se convierte en pausa y en reanudar; no hay un botón de
+   pausa aparte ni de reiniciar («⏹ Parar» ya vuelve al principio).
 
    El estado vive en el MÓDULO, no en el modal: se puede cerrar la ventana y
    la cuenta atrás sigue corriendo; al volver se reanuda donde estaba. Al
@@ -152,7 +153,8 @@ const svgEl = (tag: string, attrs: Record<string, string>): SVGElement => {
     return n;
 };
 
-/* Presets de un toque (el anillo se pone a girar en el acto) */
+/* Presets de un toque: solo FIJAN la duración (los campos «Ajustar» y el
+   anillo se ponen a la vez), pero NO arrancan la cuenta atrás */
 const PRESETS: [string, number][] = [
     ["1:00", 60_000], ["3:00", 180_000], ["5:00", 300_000],
     ["10:00", 600_000], ["15:00", 900_000], ["30:00", 1_800_000],
@@ -226,29 +228,28 @@ export function abrirTemporizador(): void {
     for (const [txt, ms] of PRESETS) {
         const c = el("button", "gym-chip gym-temp-chip", txt);
         c.type = "button";
-        c.title = `Arrancar una cuenta atrás de ${txt}`;
-        c.onclick = () => { fijarEntradas(ms); arrancar(ms); };
+        c.title = `Elegir una cuenta atrás de ${txt} (no arranca hasta que pulses Empezar)`;
+        c.onclick = () => elegirDuracion(ms);
         filaPres.appendChild(c);
         chips.push(c);
     }
     secRapidos.appendChild(filaPres);
     m.caja.appendChild(secRapidos);
 
-    // ── Controles: los mismos del descanso de la sesión guiada (−15 s, ＋15 s,
-    //    ↺ Reiniciar). El botón principal y «Parar» van debajo, cada uno en su
+    // ── Controles: los ajustes del descanso de la sesión guiada (−15 s,
+    //    ＋15 s). El botón principal y «Parar» van debajo, cada uno en su
     //    propia fila: el principal es el de usar y Parar el que se quiere
-    //    separar de él para no tocarlo sin querer. ──
+    //    separar de él para no tocarlo sin querer. (Antes había un «↺
+    //    Reiniciar» junto a −15/＋15, pero hacía lo mismo que «⏹ Parar»:
+    //    volver al principio, así que se eliminó.) ──
     const controles = el("div", "gym-temp-controles");
     const bMenos = el("button", "gym-btn-g", "−15 s"); bMenos.type = "button";
     bMenos.title = "Restar 15 segundos";
     const bMas = el("button", "gym-btn-g", "＋15 s"); bMas.type = "button";
     bMas.title = "Sumar 15 segundos";
-    const bReiniciar = el("button", "gym-btn-g", "↺ Reiniciar"); bReiniciar.type = "button";
-    bReiniciar.title = "Volver a arrancar con la duración elegida";
     bMenos.onclick = () => ajustar(-15000);
     bMas.onclick = () => ajustar(15000);
-    bReiniciar.onclick = () => arrancar(totalMs);
-    controles.append(bMenos, bMas, bReiniciar);
+    controles.append(bMenos, bMas);
     m.caja.appendChild(controles);
 
     // El botón principal lo es TODO: arranca con los campos puestos y, en
@@ -293,7 +294,6 @@ export function abrirTemporizador(): void {
         bEmpezar.classList.toggle("primario", !corriendo);
         bEmpezar.classList.toggle("pausa", corriendo);
         bMenos.disabled = r <= 0;
-        bReiniciar.disabled = corriendo && r === totalMs;
         bParar.disabled = !corriendo && !pausado;
         // MODO PRUEBAS: mientras corre o está en pausa, Ajustar y Rápidos se
         // ocultan y solo quedan el anillo, el estado y los controles.
@@ -301,8 +301,8 @@ export function abrirTemporizador(): void {
         secAjustar.classList.toggle("gym-oculto", ocultar);
         secRapidos.classList.toggle("gym-oculto", ocultar);
         // El preset elegido se resalta mientras esté vigente esa duración
-        chips.forEach((c, i) => c.classList.toggle("on",
-            corriendo && totalMs === PRESETS[i][1]));
+        // (aunque aún no haya arrancado: elegirlo ya fija el tiempo)
+        chips.forEach((c, i) => c.classList.toggle("on", totalMs === PRESETS[i][1]));
     };
 
     const fijarEntradas = (ms: number): void => {
@@ -310,6 +310,19 @@ export function abrirTemporizador(): void {
         entradas[0].value = String(Math.floor(s / 3600));
         entradas[1].value = String(Math.floor((s % 3600) / 60));
         entradas[2].value = String(s % 60);
+    };
+
+    // Elegir un preset: fija la duración (campos «Ajustar» y anillo a la vez)
+    // y deja el temporizador PARADO, a la espera de «▶ Empezar». Si había una
+    // cuenta atrás en marcha o en pausa, se detiene.
+    const elegirDuracion = (ms: number): void => {
+        totalMs = Math.max(1000, ms);
+        guardado = totalMs;
+        finEn = null;
+        pausado = false;
+        pararReloj();
+        fijarEntradas(totalMs);
+        notificar();
     };
 
     fijarEntradas(guardado > 0 ? guardado : totalMs);

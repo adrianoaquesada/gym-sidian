@@ -7,7 +7,7 @@
    fichero global de grupos (datos/grupos.ts).
    ═══════════════════════════════════════════════════════════════════════════ */
 
-import { conf } from "../estado";
+import { carpetaDatos } from "../ajustes";
 import { limpiarNombre } from "../util";
 import { archivosMdEnCarpeta, leerNotaDatos } from "./archivos";
 import { escribirRutina } from "./rutinas";
@@ -28,7 +28,7 @@ export interface EjercicioGestion {
 // Solo .md de la carpeta de datos (ni .bak ni nada de fuera de ella)
 const archivosRutinas = (): { path: string }[] => {
     try {
-        return archivosMdEnCarpeta(conf().carpetaDatos);
+        return archivosMdEnCarpeta(carpetaDatos());
     } catch { return []; }
 };
 

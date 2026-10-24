@@ -11,7 +11,7 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 
 import { CONFIG, DIAS, DIAS_LARGO } from "../config";
-import { conf } from "../estado";
+import { carpetaPlantillas, rutaIndice } from "../ajustes";
 import {
     escribirRutina, ejercicioVacio, finDesde,
     listarPlantillas, leerPlantilla, plantillaDeRutina, plantillaExiste,
@@ -538,7 +538,7 @@ export const montar = async ({ cont, inicial, esEdicion, onGuardado, enHoja = fa
     contPlantilla.appendChild(btnPlantilla);
     contPlantilla.appendChild(inPlantillaNombre);
     campoPlantilla = campo("Plantilla (opcional)", contPlantilla,
-        "Se guarda solo la estructura (días y ejercicios), sin fechas ni registros, en " + conf().carpetaPlantillas +
+        "Se guarda solo la estructura (días y ejercicios), sin fechas ni registros, en " + carpetaPlantillas() +
         ". Pulsa el botón para activarlo: se rellenará el nombre con el de la rutina y podrás cambiarlo.");
 
     // ── Ruta en vivo: el archivo de datos de la rutina ──
@@ -554,7 +554,7 @@ export const montar = async ({ cont, inicial, esEdicion, onGuardado, enHoja = fa
         const l1 = el("div", "gym-ruta-lin");
         l1.append("🗂 ", el("b", null, rutaDatosDe(idPropuesto())));
         const l2 = el("div", "gym-ruta-lin gym-mt4");
-        l2.append("y su fila en ", el("b", null, conf().rutaIndice));
+        l2.append("y su fila en ", el("b", null, rutaIndice()));
         rutaVista.append(l1, l2);
     };
     actualizaRuta();

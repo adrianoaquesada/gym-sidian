@@ -1,6 +1,8 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   5 · Historial filtrable: todas las series registradas, con filtros por
-   ejercicio, por día y por rango de fechas (más el atajo «📅 Hoy»).
+   5 · Historial filtrable (popup 🗓 de la fila de navegación): todas las
+   series registradas, con filtros por ejercicio, por día y por rango de
+   fechas (más el atajo «📅 Hoy»). Se pinta entero dentro de un modal, sin
+   caja colapsable.
 
    Puerto fiel de la sección 5 del motor original (_gym-gestor.js). NO importa
    ./calendario ni ./registro: así no se forman ciclos de imports.
@@ -12,7 +14,7 @@ import {
 import { esFechaValida, fechaLegible, hoy } from "../util";
 import { pesoTexto } from "../unidades";
 import type { Rutina } from "../tipos";
-import { cajaColapsable, el, tablaEn } from "./componentes";
+import { el, tablaEn } from "./componentes";
 
 /* Los valores de los filtros viven a nivel de MÓDULO: el dashboard se repinta
    entero y así el filtro elegido sigue ahí tras el repintado (mismo criterio
@@ -34,7 +36,9 @@ interface FilaHistorial {
 }
 
 export function seccionHistorial(c: HTMLElement, rutina: Rutina): void {
-    const c3 = cajaColapsable(c, "🗓 Historial", "filtra por ejercicio, día o rango de fechas", "gymHistorialAbiertos");
+    // En popup (gestor.ts): sin caja colapsable — el título y el ✕ los pone
+    // el modal, y el cuerpo va directo al contenedor.
+    const c3 = c;
     const ejercicios = ejerciciosConDatos(rutina);
 
     const filtros = el("div", "display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;");

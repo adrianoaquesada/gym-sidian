@@ -5,7 +5,7 @@
    volumen, 1RM estimado (Epley), historial por ejercicio y catálogos.
    ═══════════════════════════════════════════════════════════════════════════ */
 
-import { conf } from "../estado";
+import { carpetaDatos } from "../ajustes";
 import { diffDias, diaSemana, esFechaValida, hoy, lunesDe, sumarDias, tsDe, tsAhora } from "../util/fechas";
 import { norm, slug } from "../util/texto";
 import { archivosMdEnCarpeta, leerNotaDatos } from "./archivos";
@@ -231,7 +231,7 @@ export const catalogoEjerciciosTodas = async (rutinaActual?: Rutina | null): Pro
     let archivos: { path: string; basename: string }[] = [];
     try {
         // Solo .md de la carpeta de datos: nada del resto del vault
-        archivos = archivosMdEnCarpeta(conf().carpetaDatos);
+        archivos = archivosMdEnCarpeta(carpetaDatos());
     } catch { archivos = []; }
 
     for (const f of archivos) {

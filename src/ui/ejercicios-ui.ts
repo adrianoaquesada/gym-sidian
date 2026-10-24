@@ -338,36 +338,36 @@ export const elegirEjercicio = (
 });
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   Gestor del catálogo global (se abre desde «Rutinas»): renombrar ejercicios
-   y fijar su grupo muscular para el buscador. Una fila = un ejercicio
-   CONCRETO (id estable) con su nombre y su grupo; guardar renombra en todas
-   las rutinas y plantillas donde aparezca.
+   Gestor del catálogo global: renombrar ejercicios y fijar su grupo muscular
+   para el buscador. Una fila = un ejercicio CONCRETO (id estable) con su
+   nombre y su grupo; guardar renombra en todas las rutinas y plantillas donde
+   aparezca.
+
+   Se pinta dentro de un contenedor que decide quien llama: en Main ocupa la
+   sección «🗂 Ejercicios» a pantalla completa (ya no hay popup de catálogo).
    ═══════════════════════════════════════════════════════════════════════════ */
-export const gestionarEjercicios = (): void => {
-    const m = modal("🗂 Ejercicios", "nombres y grupos musculares de todo el vault");
-    ponerX(m, "Cerrar");
-    m.caja.appendChild(el("div", "opacity:.75;font-size:.82em;",
+let dlGestionN = 0;
+
+export const pintarGestionEjercicios = (cont: HTMLElement): void => {
+    cont.appendChild(el("div", "opacity:.75;font-size:.82em;",
         "Renombrar cambia solo el texto mostrado: el id del ejercicio es estable, " +
         "así que el historial, las series guardadas y las gráficas se conservan."));
 
-    const inBusca = el("input");
+    const inBusca = el("input", "gym-ejercicios-busca");
     inBusca.type = "text";
     inBusca.placeholder = "Busca por nombre o grupo";
-    inBusca.style.cssText = "width:100%;min-height:44px;padding:9px 12px;border-radius:8px;" +
-        "border:1px solid var(--background-modifier-border);background:var(--background-secondary);" +
-        "color:var(--text-normal);font-size:1em;box-sizing:border-box;margin-top:8px;";
-    m.caja.appendChild(inBusca);
+    cont.appendChild(inBusca);
 
-    // Un solo datalist compartido por todos los inputs de grupo (sugerencias)
+    // Un solo datalist compartido por todos los inputs de grupo (sugerencias),
+    // con id único por instancia
     const dl = createEl("datalist");
-    dl.id = "gym-grupos-dl";
-    m.caja.appendChild(dl);
+    dl.id = `gym-grupos-dl-${++dlGestionN}`;
+    cont.appendChild(dl);
 
-    const lista = el("div", "max-height:46vh;overflow:auto;margin-top:8px;" +
-        "border:1px solid var(--background-modifier-border);border-radius:8px;");
-    m.caja.appendChild(lista);
+    const lista = el("div", "gym-ejercicios-lista");
+    cont.appendChild(lista);
     const cuenta = el("div", "font-size:.74em;opacity:.6;margin-top:5px;");
-    m.caja.appendChild(cuenta);
+    cont.appendChild(cuenta);
 
     let cat: EjercicioGestion[] = [];
     let cargando = true;
@@ -398,7 +398,7 @@ export const gestionarEjercicios = (): void => {
         try { cat = await catalogoGestion(); } catch { /* se queda lo leído */ }
         pintar();
     };
-    m.caja.appendChild(btnPurga);
+    cont.appendChild(btnPurga);
 
     const estInput = "flex:1 1 170px;min-width:0;min-height:38px;padding:7px 10px;border-radius:8px;" +
         "border:1px solid var(--background-modifier-border);background:var(--background-secondary);" +

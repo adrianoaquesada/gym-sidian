@@ -41,7 +41,7 @@
   background:var(--background-secondary); color:var(--text-muted); font-size:.9em; min-height:40px; }
 /* Sin display:none propio: el estado oculto lo pone la clase .gym-oculto
    (el creador la alterna al mostrar/limpiar un error de validación). */
-.gym-form .gym-aviso { color:#e74c3c; background:color-mix(in srgb, #e74c3c% 12%, transparent);
+.gym-form .gym-aviso { color:#e74c3c; background:color-mix(in srgb, #e74c3c 12%, transparent);
   border:1px solid #e74c3c; border-radius:8px; padding:8px 12px; margin-bottom:12px; font-size:.85em; }
 .gym-form .gym-ruta { margin-top:4px; padding:10px 13px; border-radius:8px; background:var(--background-secondary);
   border:1px solid var(--background-modifier-border); font-family:var(--font-monospace); font-size:.8em; word-break:break-all; }
@@ -132,15 +132,15 @@ table.gym-tabla td { border-bottom:1px solid var(--background-modifier-border); 
 .gym-chip.on { border-color:#F99624; background:#F99624; color:#101010; }
 .gym-mini { padding:6px 10px; border-radius:7px; font-size:.85em; min-height:34px; cursor:pointer;
   background:var(--background-primary); border:1px solid var(--background-modifier-border); color:var(--text-normal); }
-.gym-mini.activo { background:color-mix(in srgb, #F99624% 15%, transparent);
+.gym-mini.activo { background:color-mix(in srgb, #F99624 15%, transparent);
   border-color:#F99624; color:#F99624; }
-.gym-aviso { color:#e74c3c; background:color-mix(in srgb, #e74c3c% 12%, transparent);
+.gym-aviso { color:#e74c3c; background:color-mix(in srgb, #e74c3c 12%, transparent);
   border:1px solid #e74c3c; border-radius:8px; padding:10px 13px; font-size:.86em; }
 .gym-cel { position:relative; min-height:56px; border-radius:8px; padding:5px 6px; font-size:.74em;
   border:1px solid transparent; cursor:pointer; transition:transform .1s, border-color .12s; }
 .gym-cel:hover { transform:translateY(-1px); }
 .gym-cel .n { opacity:.65; font-weight:600; line-height:1; }
-.gym-cel .d { margin-top:4px; font-weight:700; }
+.gym-cel .d { margin-top:4px; font-weight:700; overflow-wrap:anywhere; }
 .gym-cel .v { margin-top:2px; opacity:.75; }
 /* Nota del día: siempre a la vista en la esquina inferior derecha (fuera del
    flujo, para que el .v de volumen u «omitido» no la tape) */
@@ -178,7 +178,7 @@ table.gym-tabla td { border-bottom:1px solid var(--background-modifier-border); 
   border:1px solid var(--background-modifier-border); background:var(--background-secondary); color:var(--text-normal); }
 .gym-btn-g.primario { background:#F99624; border-color:#F99624; color:#101010; }
 .gym-btn-g.verde { background:#2ecc71; border-color:#2ecc71; color:#101010; }
-.gym-btn-g.pausa { background:color-mix(in srgb, #e74c3c% 16%, transparent);
+.gym-btn-g.pausa { background:color-mix(in srgb, #e74c3c 16%, transparent);
   border-color:#e74c3c; color:#e74c3c; }
 .gym-btn-g:disabled { opacity:.4; cursor:default; }
 /* ✕ de cierre: cuadrada siempre. Va después de .gym-btn-g para pisarle el min-height:54px.
@@ -189,7 +189,7 @@ table.gym-tabla td { border-bottom:1px solid var(--background-modifier-border); 
 .gym-modo-set { display:grid; grid-template-columns:32px 1fr 1fr auto; gap:8px; align-items:center;
   margin-bottom:8px; padding:4px; border-radius:12px; }
 .gym-modo-set.actual { box-shadow:inset 0 0 0 2px #F99624;
-  background:color-mix(in srgb, #F99624% 7%, transparent); }
+  background:color-mix(in srgb, #F99624 7%, transparent); }
 .gym-modo-set.hecha { opacity:.55; }
 .gym-modo-set.saltada { opacity:.5; background:color-mix(in srgb, var(--text-faint)% 12%, transparent); }
 .gym-modo-set.saltada .n { text-decoration:line-through; }
@@ -197,8 +197,8 @@ table.gym-tabla td { border-bottom:1px solid var(--background-modifier-border); 
 .gym-modo-set input { min-height:52px; font-size:1.02em; text-align:center; width:100%; border-radius:10px;
   border:1px solid var(--background-modifier-border); background:var(--background-secondary); color:var(--text-normal); }
 .gym-modo-set .n { text-align:center; font-weight:800; opacity:.55; }
-.gym-modo-set.extra { background:color-mix(in srgb, #F99624% 6%, transparent);
-  border:1px dashed color-mix(in srgb, #F99624% 50%, transparent); }
+.gym-modo-set.extra { background:color-mix(in srgb, #F99624 6%, transparent);
+  border:1px dashed color-mix(in srgb, #F99624 50%, transparent); }
 .gym-modo-set.extra .n { opacity:1; color:#F99624; line-height:1.05; }
 .gym-modo-set.extra .n .ext { display:block; font-size:.5em; font-weight:800; letter-spacing:.03em; text-transform:uppercase; }
 .gym-descanso { text-align:center; border:1px dashed #F99624; border-radius:12px; padding:12px 10px; margin:12px 0; }
@@ -228,7 +228,7 @@ table.gym-tabla td { border-bottom:1px solid var(--background-modifier-border); 
    Pestañas del plugin (vistas a todo el ancho, estilo Kanban)
    ══════════════════════════════════════════════════════════════════════════ */
 .view-content.gym-vista {
-    padding: 18px 26px 40px;
+    padding: 8px 26px 40px;   /* 8px arriba: la navegación sube hacia la cabecera */
     overflow-y: auto;
     overflow-x: hidden;   /* en móvil ningún texto debe sacar la pestaña de su ancho */
     max-width: none;
@@ -257,7 +257,7 @@ table.gym-tabla td { border-bottom:1px solid var(--background-modifier-border); 
 .gym-fila-rutina-acciones { display: flex; gap: 4px; flex: 0 0 auto; }
 .gym-btn-icono { min-width: 38px; min-height: 38px; padding: 4px 8px; }
 @media (max-width: 640px) {
-  .view-content.gym-vista { padding: 12px 10px 32px; }
+  .view-content.gym-vista { padding: 6px 10px 32px; }
   .gym-fila-rutina { padding: 6px; }
   .gym-btn-icono { min-width: 42px; min-height: 42px; }
 }
@@ -295,6 +295,30 @@ table.gym-tabla td { border-bottom:1px solid var(--background-modifier-border); 
 }
 .gym-cab .gym-miga:hover { color: #F99624; }
 .gym-cab .gym-miga-sep { opacity: .45; font-weight: 400; }
+
+/* ═════════════ Navegación (carrusel de pestañas bajo la cabecera) ═════════════
+   Una sola línea que se recorre lateralmente (sin barra de desplazamiento
+   visible): los botones nunca se apilan ni se cortan. */
+.gym-nav {
+    display: flex; gap: 8px; flex-wrap: nowrap; align-items: center;
+    margin: 2px 0 14px; padding-bottom: 2px;
+    overflow-x: auto; overflow-y: hidden;
+    scrollbar-width: none; -ms-overflow-style: none;   /* Firefox e IE/Edge */
+    -webkit-overflow-scrolling: touch;                 /* momentum en iOS */
+}
+.gym-nav::-webkit-scrollbar { display: none; }         /* Chromium/Safari */
+.gym-nav-btn {
+    flex: 0 0 auto; white-space: nowrap;
+    padding: 9px 15px; border-radius: 9px; border: 1px solid var(--background-modifier-border);
+    background: var(--background-secondary); color: var(--text-normal);
+    font-size: .88em; font-weight: 600; min-height: 40px; cursor: pointer;
+}
+.gym-nav-btn:hover { filter: brightness(1.06); }
+.gym-nav-btn.primario { background: #F99624; border-color: #F99624; color: #101010; font-weight: 800; }
+.gym-nav-btn.activo { background: #F99624; border-color: #F99624; color: #101010; font-weight: 800; }
+/* Separador elástico: empuja a la derecha lo que venga detrás (p. ej. el
+   temporizador del dashboard de una rutina) cuando aún cabe en pantalla */
+.gym-nav-espacio { flex: 1 0 auto; }
 
 /* ═════════════ E: hoja superpuesta de crear/editar ═════════════ */
 .gym-hoja-overlay {
@@ -404,8 +428,7 @@ table.gym-tabla td { border-bottom:1px solid var(--background-modifier-border); 
 .gym-td-tiempos-entre { opacity: .85; }
 .gym-td-notas { opacity: .75; }
 
-/* ── Registro rápido ─────────────────────────────────────────────────────── */
-.gym-btn-guiada { width: 100%; min-height: 52px; font-size: 1em; margin-bottom: 8px; }
+/* ── Registro de sesión ──────────────────────────────────────────────────── */
 .gym-btn-anadir { width: 100%; min-height: 46px; margin-top: 8px; }
 .gym-serie-num { opacity: .6; font-size: .8em; font-weight: 700; }
 .gym-tachado { text-decoration: line-through; }
@@ -415,6 +438,18 @@ table.gym-tabla td { border-bottom:1px solid var(--background-modifier-border); 
 .gym-btn-ancho { width: 100%; min-height: 48px; }
 .gym-btn-purga { width: 100%; min-height: 40px; margin-top: 8px; }
 .gym-btn-guardar-ej { flex: none; min-width: 44px; min-height: 38px; padding: 6px 12px; }
+/* Lista del gestor del catálogo: en el popup va acotada; en la sección
+   «Ejercicios» de Main (pantalla completa) crece hasta donde haga falta */
+.gym-ejercicios-lista {
+    max-height: 46vh; overflow: auto; margin-top: 8px;
+    border: 1px solid var(--background-modifier-border); border-radius: 8px;
+}
+.gym-ejercicios-inline .gym-ejercicios-lista { max-height: none; }
+.gym-ejercicios-busca {
+    width: 100%; min-height: 44px; padding: 9px 12px; border-radius: 8px;
+    border: 1px solid var(--background-modifier-border); background: var(--background-secondary);
+    color: var(--text-normal); font-size: 1em; box-sizing: border-box; margin-top: 8px;
+}
 .gym-chip-mini { font-size: .72em; font-weight: 700; }
 .gym-grupo { opacity: .85; }
 .gym-sin-grupo { opacity: .45; }
@@ -515,3 +550,21 @@ table.gym-tabla td { border-bottom:1px solid var(--background-modifier-border); 
 .gym-temp-parar { width: 100%; min-height: 46px; font-size: .92em; opacity: .85; }
 .gym-temp-controles { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-top: 14px; }
 .gym-temp-controles .gym-btn-g { flex: 1 1 auto; min-width: 96px; }
+
+/* ── Cabecera de las vistas: solo el ⋮, sin navegación ni título ────────── */
+/* El framework dibuja en .view-header tres zonas: a la izquierda las flechas
+   ← → (.view-header-nav-buttons) y el título o ruta del archivo
+   (.view-header-title-container); a la derecha .view-actions, que es donde
+   viven los iconos propios añadidos con addAction() Y el ⋮ de «Más opciones».
+   Al ser hermanas, se oculta la izquierda sin tocar el ⋮ (a diferencia del
+   plugin real-fruit-snacks, que vacía containerEl entero y pierde el ⋮). */
+/* data-type = getViewType(): cubre gym-stone-lista/-rutina/-form (y las
+   legadas), sin pisar la cabecera de vistas de otros plugins. */
+/* OJO: en escritorio el título-container lleva `flex: 1 1 auto`, así que él
+   era el que empujaba .view-actions al borde derecho. Ocultarlo con
+   display:none hizo que los iconos cayeran a la izquierda → se les devuelve
+   el empuje con margin-inline-start:auto (lo mismo que Obsidian hace en
+   .is-phone .view-header .view-actions). */
+.workspace-leaf-content[data-type^="gym-stone-"] .view-header-nav-buttons,
+.workspace-leaf-content[data-type^="gym-stone-"] .view-header-title-container { display: none; }
+.workspace-leaf-content[data-type^="gym-stone-"] .view-actions { margin-inline-start: auto; }
